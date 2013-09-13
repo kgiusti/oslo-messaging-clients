@@ -1,0 +1,42 @@
+
+# load balanced queue
+#
+'openstack/my-topic ; {"node": {"x-declare": {"auto-delete": true, "durable": true}, 
+                                "type": "topic"},
+                       "create": "always",
+                       "link": {"x-declare": {"auto-delete": false, "exclusive": false, "durable": false}, 
+                       "durable": true,
+                       "name": "my-topic"}}'
+
+## queue: org.apache.qpid.broker:queue:my-topic
+## exchange: org.apache.qpid.broker:exchange:openstack  (topic)
+## binding: "my-topic"
+
+
+# direct-to-server
+#
+'openstack/my-topic.my-server-name ; {"node": {"x-declare": {"auto-delete": true, "durable": true},
+                                               "type": "topic"},
+                                      "create": "always",
+                                      "link": {"x-declare": {"auto-delete": false, "exclusive": false, "durable": false},
+                                      "durable": true,
+                                      "name": "my-topic.my-server-name"}}'
+
+## queue: org.apache.qpid.broker:queue:my-topic.my-server-name
+## exchange: org.apache.qpid.broker:exchange:openstack  (topic)
+## binding: "my-topic.my-server-name"
+
+
+
+# fanout on topic
+#
+'my-topic_fanout ; {"node": {"x-declare": {"auto-delete": true, "durable": false, "type": "fanout"},
+                    "type": "topic"},
+                    "create": "always",
+                    "link": {"x-declare": {"auto-delete": true, "exclusive": true, "durable": false},
+                    "durable": true,
+                    "name": "my-topic_fanout_2c096a65507e4f189548e67dd89faf9b"}}'
+
+## queue: org.apache.qpid.broker:queue:my-topic_fanout_2c096a65507e4f189548e67dd89faf9b
+## exchange: org.apache.qpid.broker:exchange:my-topic_fanout  (fanout)
+## no binding key
