@@ -8,11 +8,11 @@ from oslo import messaging
 
 def main(argv=None):
 
-    _usage = """Usage: %prog [options] <method> [<arg-name> <arg1-value>]*"""
+    _usage = """Usage: %prog [options] <topic> <method> [<arg-name> <arg-value>]*"""
     parser = optparse.OptionParser(usage=_usage)
     parser.add_option("--exchange", action="store", default="my-exchange")
-    parser.add_option("--topic", action="store", default="my-topic")
-    parser.add_option("--server", action="store", default="my-server-name")
+    #parser.add_option("--topic", action="store", default="my-topic")
+    parser.add_option("--server", action="store")
     parser.add_option("--namespace", action="store", default="my-namespace")
     parser.add_option("--fanout", action="store_true")
     parser.add_option("--timeout", action="store", type="int")
@@ -20,9 +20,13 @@ def main(argv=None):
     parser.add_option("--version", action="store", default="1.1")
 
     opts, extra = parser.parse_args(args=argv)
-    print "Calling server, name=%s exchange=%s topic=%s namespace=%s fanout=%s" % (
-        opts.server, opts.exchange, opts.topic, opts.namespace,
-        str(opts.fanout))
+    if not extra:
+        print "<topic> not supplied!!"
+        return -1
+    topic = extra[0]
+    extra = extra[1:]
+    print "Calling server on topic %s, server=%s exchange=%s namespace=%s fanout=%s" % (
+        topic, opts.server, opts.exchange, opts.namespace, str(opts.fanout))
 
     method = None
     args = None
@@ -35,7 +39,7 @@ def main(argv=None):
     transport = messaging.get_transport(cfg.CONF, url="qpid://localhost:5672")
 
     target = messaging.Target(exchange=opts.exchange,
-                              topic=opts.topic,
+                              topic=topic,
                               namespace=opts.namespace,
                               server=opts.server,
                               fanout=opts.fanout,

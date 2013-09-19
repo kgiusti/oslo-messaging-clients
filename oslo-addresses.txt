@@ -1,42 +1,211 @@
 
-# load balanced queue
-#
-'openstack/my-topic ; {"node": {"x-declare": {"auto-delete": true, "durable": true}, 
-                                "type": "topic"},
-                       "create": "always",
-                       "link": {"x-declare": {"auto-delete": false, "exclusive": false, "durable": false}, 
-                       "durable": true,
-                       "name": "my-topic"}}'
+./my-server.py &
+Running server, name=my-server-name exchange=my-exchange topic=my-topic namespace=my-namespace
 
-## queue: org.apache.qpid.broker:queue:my-topic
-## exchange: org.apache.qpid.broker:exchange:openstack  (topic)
-## binding: "my-topic"
-
-
-# direct-to-server
-#
-'openstack/my-topic.my-server-name ; {"node": {"x-declare": {"auto-delete": true, "durable": true},
-                                               "type": "topic"},
-                                      "create": "always",
-                                      "link": {"x-declare": {"auto-delete": false, "exclusive": false, "durable": false},
-                                      "durable": true,
-                                      "name": "my-topic.my-server-name"}}'
-
-## queue: org.apache.qpid.broker:queue:my-topic.my-server-name
-## exchange: org.apache.qpid.broker:exchange:openstack  (topic)
-## binding: "my-topic.my-server-name"
-
+Created connection <qpid.messaging.endpoints.Connection instance at 0x1d0d3f8>
+Created connection <qpid.messaging.endpoints.Connection instance at 0x1d0d440>
+Created session <Session df3496d7-4425-4e41-b91d-adc6fa9ce120:0> on connection <qpid.messaging.endpoints.Connection instance at 0x1d0d440>
+Creating receiver for address:
+    'openstack/my-topic ; {"node": {"x-declare": {"auto-delete": true, "durable": true},
+                                    "type": "topic"},
+                           "create": "always",
+                           "link": {"x-declare": {"auto-delete": false, "exclusive": false, "durable": false},
+                                    "durable": true, "name": "my-topic"}}' on session '<Session df3496d7-4425-4e41-b91d-adc6fa9ce120:0>'
+Creating receiver for address:
+    'openstack/my-topic.my-server-name ; {"node": {"x-declare": {"auto-delete": true, "durable": true},
+                                                   "type": "topic"},
+                                          "create": "always",
+                                          "link": {"x-declare": {"auto-delete": false, "exclusive": false, "durable": false},
+                                                   "durable": true, "name": "my-topic.my-server-name"}}' on session '<Session df3496d7-4425-4e41-b91d-adc6fa9ce120:0>'
+Creating receiver for address:
+    'my-topic_fanout ; {"node": {"x-declare": {"auto-delete": true, "durable": false, "type": "fanout"},
+                                 "type": "topic"},
+                        "create": "always",
+                        "link": {"x-declare": {"auto-delete": true, "exclusive": true, "durable": false},
+                                 "durable": true,
+                                 "name": "my-topic_fanout_790d07a871094e9fa929da2d2ecf3888"}}' on session '<Session df3496d7-4425-4e41-b91d-adc6fa9ce120:0>'
 
 
-# fanout on topic
-#
-'my-topic_fanout ; {"node": {"x-declare": {"auto-delete": true, "durable": false, "type": "fanout"},
-                    "type": "topic"},
-                    "create": "always",
-                    "link": {"x-declare": {"auto-delete": true, "exclusive": true, "durable": false},
-                    "durable": true,
-                    "name": "my-topic_fanout_2c096a65507e4f189548e67dd89faf9b"}}'
+./my-server.py --server my-other-server &
+(pyenv)[kgiusti@t530 work (master)]$ Running server, name=my-other-server exchange=my-exchange topic=my-topic namespace=my-namespace
+Created connection <qpid.messaging.endpoints.Connection instance at 0x14e03f8>
+Created connection <qpid.messaging.endpoints.Connection instance at 0x14e0440>
+Created session <Session ccc130f3-4cc8-4850-9637-1b0dbf499e37:0> on connection <qpid.messaging.endpoints.Connection instance at 0x14e0440>
+Creating receiver for address:
+    'openstack/my-topic ; {"node": {"x-declare": {"auto-delete": true, "durable": true},
+                                    "type": "topic"},
+                           "create": "always",
+                           "link": {"x-declare": {"auto-delete": false, "exclusive": false, "durable": false},
+                                    "durable": true, "name": "my-topic"}}' on session '<Session ccc130f3-4cc8-4850-9637-1b0dbf499e37:0>'
+Creating receiver for address:
+    'openstack/my-topic.my-other-server ; {"node": {"x-declare": {"auto-delete": true, "durable": true},
+                                                    "type": "topic"},
+                                           "create": "always",
+                                           "link": {"x-declare": {"auto-delete": false, "exclusive": false, "durable": false},
+                                                    "durable": true,
+                                                    "name": "my-topic.my-other-server"}}' on session '<Session ccc130f3-4cc8-4850-9637-1b0dbf499e37:0>'
+Creating receiver for address:
+    'my-topic_fanout ; {"node": {"x-declare": {"auto-delete": true, "durable": false, "type": "fanout"},
+                                 "type": "topic"},
+                        "create": "always",
+                        "link": {"x-declare": {"auto-delete": true, "exclusive": true, "durable": false},
+                                 "durable": true,
+                                 "name": "my-topic_fanout_2a86fac82e014295b4648bea84f5351f"}}' on session '<Session ccc130f3-4cc8-4850-9637-1b0dbf499e37:0>'
 
-## queue: org.apache.qpid.broker:queue:my-topic_fanout_2c096a65507e4f189548e67dd89faf9b
-## exchange: org.apache.qpid.broker:exchange:my-topic_fanout  (fanout)
-## no binding key
+
+
+./my-client.py my-topic common arg1 arg2
+Calling server on topic my-topic, server=None exchange=my-exchange namespace=my-namespace fanout=None
+Method=common, args={'arg1': 'arg2'}
+Created connection <qpid.messaging.endpoints.Connection instance at 0x1aedf38>
+Created connection <qpid.messaging.endpoints.Connection instance at 0x1aedf80>
+Created session <Session 3fe90e1d-7666-4a7d-bb6e-648244e8e830:0> on connection <qpid.messaging.endpoints.Connection instance at 0x1aedf80>
+Creating receiver for address:
+    'reply_905ca1ad8a8447fdb13ebf95f3b42fa3/reply_905ca1ad8a8447fdb13ebf95f3b42fa3 ;
+         {"node": {"x-declare": {"auto-delete": true, "durable": true, "type": "direct"},
+                   "type": "topic"},
+          "create": "always",
+          "link": {"x-declare": {"exclusive": true, "auto-delete": false, "durable": false},
+                   "durable": true,
+                   "name": "reply_905ca1ad8a8447fdb13ebf95f3b42fa3"}}' on session '<Session 3fe90e1d-7666-4a7d-bb6e-648244e8e830:0>'
+
+Created connection <qpid.messaging.endpoints.Connection instance at 0x1b701b8>
+Created connection <qpid.messaging.endpoints.Connection instance at 0x1b70290>
+Created session <Session 2ef1dc7b-7c02-488b-bbe9-ae2aa6094961:0> on connection <qpid.messaging.endpoints.Connection instance at 0x1b70290>
+Creating sender for address:
+    'openstack/my-topic ; {"node": {"x-declare": {"auto-delete": true, "durable": false},
+                                    "type": "topic"},
+                           "create": "always"}' on session '<Session 2ef1dc7b-7c02-488b-bbe9-ae2aa6094961:0>'
+reset session <Session 2ef1dc7b-7c02-488b-bbe9-ae2aa6094961:1> on connection <qpid.messaging.endpoints.Connection instance at 0x1b70290>
+
+my-server-name::TestEndpoint01::common( ctxt={'application': u'my-client', 'cast': None, 'time': u'Mon Sep 16 10:23:55 2013'} arg={u'arg1': u'arg2'} ) called!!!
+
+Created connection <qpid.messaging.endpoints.Connection instance at 0x1d88a70>
+Created connection <qpid.messaging.endpoints.Connection instance at 0x1d88f80>
+Created session <Session 7648b0bb-93d6-4daa-998c-438ae8a5976b:0> on connection <qpid.messaging.endpoints.Connection instance at 0x1d88f80>
+Creating sender for address:
+
+   'reply_905ca1ad8a8447fdb13ebf95f3b42fa3 ;
+       {"node": {"x-declare": {"auto-delete": true, "durable": false, "type": "direct"},
+                 "type": "topic"},
+        "create": "always"}' on session '<Session 7648b0bb-93d6-4daa-998c-438ae8a5976b:0>'
+
+Creating sender for address:
+
+    'reply_905ca1ad8a8447fdb13ebf95f3b42fa3 ;
+        {"node": {"x-declare": {"auto-delete": true, "durable": false, "type": "direct"},
+                  "type": "topic"},
+         "create": "always"}' on session '<Session 7648b0bb-93d6-4daa-998c-438ae8a5976b:0>'
+reset session <Session 7648b0bb-93d6-4daa-998c-438ae8a5976b:1> on connection <qpid.messaging.endpoints.Connection instance at 0x1d88f80>
+Return value=None
+
+
+./my-client.py --fanout my-topic common arg1 arg2
+Calling server on topic my-topic, server=None exchange=my-exchange namespace=my-namespace fanout=True
+Method=common, args={'arg1': 'arg2'}
+
+Created connection <qpid.messaging.endpoints.Connection instance at 0x1781f38>
+Created connection <qpid.messaging.endpoints.Connection instance at 0x1781f80>
+Created session <Session 52109711-da83-46da-bcc5-66da5184f7c3:0> on connection <qpid.messaging.endpoints.Connection instance at 0x1781f80>
+Creating receiver for address 'reply_c31daeafc83a4f6eb83adb14d190494f/reply_c31daeafc83a4f6eb83adb14d190494f ; {"node": {"x-declare": {"auto-delete": true, "durable": true, "type": "direct"}, "type": "topic"}, "create": "always", "link": {"x-declare": {"exclusive": true, "auto-delete": false, "durable": false}, "durable": true, "name": "reply_c31daeafc83a4f6eb83adb14d190494f"}}' on session '<Session 52109711-da83-46da-bcc5-66da5184f7c3:0>'
+
+Created connection <qpid.messaging.endpoints.Connection instance at 0x18050e0>
+Created connection <qpid.messaging.endpoints.Connection instance at 0x1805248>
+Created session <Session c9556f6e-6862-453b-9c53-2d86e3cf1e22:0> on connection <qpid.messaging.endpoints.Connection instance at 0x1805248>
+Creating sender for address 'my-topic_fanout ; {"node": {"x-declare": {"auto-delete": true, "durable": false, "type": "fanout"}, "type": "topic"}, "create": "always"}' on session '<Session c9556f6e-6862-453b-9c53-2d86e3cf1e22:0>'
+reset session <Session c9556f6e-6862-453b-9c53-2d86e3cf1e22:1> on connection <qpid.messaging.endpoints.Connection instance at 0x1805248>
+
+my-other-server::TestEndpoint01::common( ctxt={'application': u'my-client', 'cast': None, 'time': u'Mon Sep 16 10:24:02 2013'} arg={u'arg1': u'arg2'} ) called!!!
+my-server-name::TestEndpoint01::common( ctxt={'application': u'my-client', 'cast': None, 'time': u'Mon Sep 16 10:24:02 2013'} arg={u'arg1': u'arg2'} ) called!!!
+
+Creating sender for address 'reply_c31daeafc83a4f6eb83adb14d190494f ; {"node": {"x-declare": {"auto-delete": true, "durable": false, "type": "direct"}, "type": "topic"}, "create": "always"}' on session '<Session 7648b0bb-93d6-4daa-998c-438ae8a5976b:1>'
+Created connection <qpid.messaging.endpoints.Connection instance at 0x155abd8>
+Created connection <qpid.messaging.endpoints.Connection instance at 0x155aea8>
+Created session <Session 6e5c29ae-315a-452a-8ffd-42a6b4edf513:0> on connection <qpid.messaging.endpoints.Connection instance at 0x155aea8>
+
+Creating sender for address 'reply_c31daeafc83a4f6eb83adb14d190494f ; {"node": {"x-declare": {"auto-delete": true, "durable": false, "type": "direct"}, "type": "topic"}, "create": "always"}' on session '<Session 6e5c29ae-315a-452a-8ffd-42a6b4edf513:0>'
+
+Creating sender for address 'reply_c31daeafc83a4f6eb83adb14d190494f ; {"node": {"x-declare": {"auto-delete": true, "durable": false, "type": "direct"}, "type": "topic"}, "create": "always"}' on session '<Session 7648b0bb-93d6-4daa-998c-438ae8a5976b:1>'
+
+Creating sender for address 'reply_c31daeafc83a4f6eb83adb14d190494f ; {"node": {"x-declare": {"auto-delete": true, "durable": false, "type": "direct"}, "type": "topic"}, "create": "always"}' on session '<Session 6e5c29ae-315a-452a-8ffd-42a6b4edf513:0>'
+reset session <Session 7648b0bb-93d6-4daa-998c-438ae8a5976b:2> on connection <qpid.messaging.endpoints.Connection instance at 0x1d88f80>
+Return value=None
+reset session <Session 6e5c29ae-315a-452a-8ffd-42a6b4edf513:1> on connection <qpid.messaging.endpoints.Connection instance at 0x155aea8>
+
+
+(pyenv)[kgiusti@t530 work (master)]$ 
+(pyenv)[kgiusti@t530 work (master)]$ ./my-client.py --server my-other-server my-topic common arg1 arg2
+Calling server on topic my-topic, server=my-other-server exchange=my-exchange namespace=my-namespace fanout=None
+Method=common, args={'arg1': 'arg2'}
+Created connection <qpid.messaging.endpoints.Connection instance at 0x2d31f38>
+Created connection <qpid.messaging.endpoints.Connection instance at 0x2d31f80>
+Created session <Session 9244f578-e6d5-472f-9ec4-c6b004b178cd:0> on connection <qpid.messaging.endpoints.Connection instance at 0x2d31f80>
+Creating receiver for address 'reply_9dc86f831d104e96ae226677ca360897/reply_9dc86f831d104e96ae226677ca360897 ; {"node": {"x-declare": {"auto-delete": true, "durable": true, "type": "direct"}, "type": "topic"}, "create": "always", "link": {"x-declare": {"exclusive": true, "auto-delete": false, "durable": false}, "durable": true, "name": "reply_9dc86f831d104e96ae226677ca360897"}}' on session '<Session 9244f578-e6d5-472f-9ec4-c6b004b178cd:0>'
+Created connection <qpid.messaging.endpoints.Connection instance at 0x2db50e0>
+Created connection <qpid.messaging.endpoints.Connection instance at 0x2db5248>
+Created session <Session 1fd2316d-9536-4700-96f9-27136a50045c:0> on connection <qpid.messaging.endpoints.Connection instance at 0x2db5248>
+Creating sender for address 'openstack/my-topic.my-other-server ; {"node": {"x-declare": {"auto-delete": true, "durable": false}, "type": "topic"}, "create": "always"}' on session '<Session 1fd2316d-9536-4700-96f9-27136a50045c:0>'
+reset session <Session 1fd2316d-9536-4700-96f9-27136a50045c:1> on connection <qpid.messaging.endpoints.Connection instance at 0x2db5248>
+my-other-server::TestEndpoint01::common( ctxt={'application': u'my-client', 'cast': None, 'time': u'Mon Sep 16 10:24:07 2013'} arg={u'arg1': u'arg2'} ) called!!!
+Creating sender for address 'reply_9dc86f831d104e96ae226677ca360897 ; {"node": {"x-declare": {"auto-delete": true, "durable": false, "type": "direct"}, "type": "topic"}, "create": "always"}' on session '<Session 6e5c29ae-315a-452a-8ffd-42a6b4edf513:1>'
+Creating sender for address 'reply_9dc86f831d104e96ae226677ca360897 ; {"node": {"x-declare": {"auto-delete": true, "durable": false, "type": "direct"}, "type": "topic"}, "create": "always"}' on session '<Session 6e5c29ae-315a-452a-8ffd-42a6b4edf513:1>'
+Return value=None
+reset session <Session 6e5c29ae-315a-452a-8ffd-42a6b4edf513:2> on connection <qpid.messaging.endpoints.Connection instance at 0x155aea8>
+(pyenv)[kgiusti@t530 work (master)]$ 
+(pyenv)[kgiusti@t530 work (master)]$ ./my-client.py --cast my-topic common arg1 arg2
+Calling server on topic my-topic, server=None exchange=my-exchange namespace=my-namespace fanout=None
+Method=common, args={'arg1': 'arg2'}
+Created connection <qpid.messaging.endpoints.Connection instance at 0x1504fc8>
+Created connection <qpid.messaging.endpoints.Connection instance at 0x150b050>
+Created session <Session 0e254a30-ca81-4428-a252-2b65c9e9625d:0> on connection <qpid.messaging.endpoints.Connection instance at 0x150b050>
+Creating sender for address 'openstack/my-topic ; {"node": {"x-declare": {"auto-delete": true, "durable": false}, "type": "topic"}, "create": "always"}' on session '<Session 0e254a30-ca81-4428-a252-2b65c9e9625d:0>'
+my-other-server::TestEndpoint01::common( ctxt={'application': u'my-client', 'cast': True, 'time': u'Mon Sep 16 10:24:13 2013'} arg={u'arg1': u'arg2'} ) called!!!
+reset session <Session 0e254a30-ca81-4428-a252-2b65c9e9625d:1> on connection <qpid.messaging.endpoints.Connection instance at 0x150b050>
+Creating sender for address 'None ; {"node": {"x-declare": {"auto-delete": true, "durable": false, "type": "direct"}, "type": "topic"}, "create": "always"}' on session '<Session 6e5c29ae-315a-452a-8ffd-42a6b4edf513:2>'
+Creating sender for address 'None ; {"node": {"x-declare": {"auto-delete": true, "durable": false, "type": "direct"}, "type": "topic"}, "create": "always"}' on session '<Session 6e5c29ae-315a-452a-8ffd-42a6b4edf513:2>'
+reset session <Session 6e5c29ae-315a-452a-8ffd-42a6b4edf513:3> on connection <qpid.messaging.endpoints.Connection instance at 0x155aea8>
+(pyenv)[kgiusti@t530 work (master)]$ 
+(pyenv)[kgiusti@t530 work (master)]$ 
+(pyenv)[kgiusti@t530 work (master)]$ qpid-stat -q
+Queues
+  queue                                             dur  autoDel  excl  msg   msgIn  msgOut  bytes  bytesIn  bytesOut  cons  bind
+  =================================================================================================================================
+  387992b3-6659-4075-ab30-698bd909ada7:0.0               Y        Y        0     0      0       0      0        0         1     2
+  my-topic                                                                 0     2      2       0    683      683         2     2
+  my-topic.my-other-server                                                 0     1      1       0    392      392         1     2
+  my-topic.my-server-name                                                  0     0      0       0      0        0         1     2
+  my-topic_fanout_2a86fac82e014295b4648bea84f5351f       Y        Y        0     1      1       0    392      392         1     2
+  my-topic_fanout_790d07a871094e9fa929da2d2ecf3888       Y        Y        0     1      1       0    392      392         1     2
+  reply_905ca1ad8a8447fdb13ebf95f3b42fa3                                   0     2      2       0    362      362         0     2
+  reply_9dc86f831d104e96ae226677ca360897                                   0     2      2       0    362      362         0     2
+  reply_c31daeafc83a4f6eb83adb14d190494f                                   0     4      4       0    724      724         0     2
+(pyenv)[kgiusti@t530 work (master)]$ qpid-stat -e
+Exchanges
+  exchange                                type     dur  bind  msgIn  msgOut  msgDrop  byteIn  byteOut  byteDrop
+  ===============================================================================================================
+                                          direct           9     8      8       0     1.45k   1.45k       0
+  None                                    direct           0     2      0       2      268       0      268
+  amq.direct                              direct   Y       0     0      0       0        0       0        0
+  amq.fanout                              fanout   Y       0     0      0       0        0       0        0
+  amq.match                               headers  Y       0     0      0       0        0       0        0
+  amq.topic                               topic    Y       0     0      0       0        0       0        0
+  my-topic_fanout                         fanout           2     1      2       0      392     784        0
+  openstack                               topic    Y       3     3      3       0     1.07k   1.07k       0
+  qmf.default.direct                      direct           0     0      0       0        0       0        0
+  qmf.default.topic                       topic            1   101      1     100      134k   14.2k     120k
+  qpid.management                         topic            0     0      0       0        0       0        0
+  reply_905ca1ad8a8447fdb13ebf95f3b42fa3  direct   Y       1     0      0       0        0       0        0
+  reply_9dc86f831d104e96ae226677ca360897  direct   Y       1     0      0       0        0       0        0
+  reply_c31daeafc83a4f6eb83adb14d190494f  direct   Y       1     0      0       0        0       0        0
+(pyenv)[kgiusti@t530 work (master)]$ qpid-stat -u
+Subscriptions
+  subscr  queue                                             conn                         procName      procId  browse  acked  excl  creditMode  delivered  sessUnacked
+  ======================================================================================================================================================================
+  0       051f7a41-313d-447c-bbbb-56676b9fa0ac:0.0          qpid.[::1]:5672-[::1]:37153  qpid-stat     26548                        CREDIT      0          0
+  0       my-topic                                          qpid.[::1]:5672-[::1]:37140  my-server.py  26153                        CREDIT      1          0
+  1       my-topic.my-other-server                          qpid.[::1]:5672-[::1]:37140  my-server.py  26153                        CREDIT      1          0
+  2       my-topic_fanout_2a86fac82e014295b4648bea84f5351f  qpid.[::1]:5672-[::1]:37140  my-server.py  26153                        CREDIT      1          0
+  0       my-topic                                          qpid.[::1]:5672-[::1]:37139  my-server.py  26073                        CREDIT      1          0
+  1       my-topic.my-server-name                           qpid.[::1]:5672-[::1]:37139  my-server.py  26073                        CREDIT      0          0
+  2       my-topic_fanout_790d07a871094e9fa929da2d2ecf3888  qpid.[::1]:5672-[::1]:37139  my-server.py  26073                        CREDIT      1          0
+
