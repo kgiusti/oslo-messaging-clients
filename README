@@ -1,0 +1,10 @@
+A simple RPC client and server, built around the oslo.messaging
+library from Openstack.  An academic exercise simply to gain an
+understanding of the oslo.messenger API!
+
+For more info on Openstack and oslo.messaging, see:
+
+  http://www.openstack.org/
+
+Not officially part of the olso.messenger project, just my own sandbox
+to play in.
