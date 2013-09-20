@@ -33,30 +33,35 @@ class TestEndpoint02(object):
 
 def main(argv=None):
 
-    _usage = """Usage: %prog [options]"""
+    _usage = """Usage: %prog [options] <name>"""
     parser = optparse.OptionParser(usage=_usage)
     parser.add_option("--exchange", action="store", default="my-exchange")
     parser.add_option("--topic", action="store", default="my-topic")
-    parser.add_option("--server", action="store", default="my-server-name")
+    #parser.add_option("--server", action="store", default="my-server-name")
     parser.add_option("--namespace", action="store", default="my-namespace")
     parser.add_option("--version", action="store", default="1.1")
     parser.add_option("--eventlet", action="store_true")
 
     opts, extra = parser.parse_args(args=argv)
+    if not extra:
+        print "<name> not supplied!"
+        return -1
+    server_name = extra[0]
+
     print "Running server, name=%s exchange=%s topic=%s namespace=%s" % (
-        opts.server, opts.exchange, opts.topic, opts.namespace)
+        server_name, opts.exchange, opts.topic, opts.namespace)
 
     transport = messaging.get_transport(cfg.CONF, url="qpid://localhost:5672")
 
     target = messaging.Target(exchange=opts.exchange,
                               topic=opts.topic,
                               namespace=opts.namespace,
-                              server=opts.server,
+                              server=server_name,
                               version=opts.version)
 
     endpoints = [
-        TestEndpoint01(opts.server, target),
-        TestEndpoint02(opts.server, target),
+        TestEndpoint01(server_name, target),
+        TestEndpoint02(server_name, target),
         ]
     server = messaging.get_rpc_server(transport, target, endpoints,
                                       executor='eventlet' if opts.eventlet else 'blocking')
