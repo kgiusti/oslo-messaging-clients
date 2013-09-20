@@ -209,3 +209,35 @@ Subscriptions
   1       my-topic.my-server-name                           qpid.[::1]:5672-[::1]:37139  my-server.py  26073                        CREDIT      0          0
   2       my-topic_fanout_790d07a871094e9fa929da2d2ecf3888  qpid.[::1]:5672-[::1]:37139  my-server.py  26073                        CREDIT      1          0
 
+## private queue, no exchange (queue is _shared_)
+./drain -f "testq; {create: always, node: { type: queue, durable: True, x-declare: {auto-delete: True }}}"
+./drain -f "testq; {create: always, node: { type: queue, durable: True, x-declare: {auto-delete: True }}}"
+
+## all below - copy of msg is sent to each drain!!! ###
+
+## shared topic, private queue, copy to each.  Topic exchange persists, queues delete on close
+./drain -f "testq; {create: always, node: { type: topic, durable: True, x-declare: {auto-delete: True }}}" &
+./drain -f "testq; {create: always, node: { type: topic, durable: True, x-declare: {auto-delete: True }}}" &
+
+## shared direct - same behavior as above
+./drain -f "testq2; {create: always, node: { type: topic, durable: True, x-declare: {auto-delete: True, type: direct }}}" &
+./drain -f "testq2; {create: always, node: { type: topic, durable: True, x-declare: {auto-delete: True, type: direct }}}" &
+
+
+## ditto, but with named queues (which auto delete)
+./drain -f "testq2; {create: always, node: { type: topic, durable: True, x-declare: {auto-delete: True, type: direct }}, link: {name:foobag1}}"
+./drain -f "testq2; {create: always, node: { type: topic, durable: True, x-declare: {auto-delete: True, type: direct }}, link: {name:foobag2}}"
+
+## this time with named "bindings" routed by subject
+./drain -f "testq3/testme; {create: always, node: { type: topic, durable: True, x-declare: {auto-delete: True, type: direct }}, link: {name:foobag3}}" &
+./drain -f "testq3/testme; {create: always, node: { type: topic, durable: True, x-declare: {auto-delete: True, type: direct }}, link: {name:foobag4}}" &
+
+
+#### !!!THIS!!!!  will create two consumers sharing the same queue
+
+./drain -f "testq3/testme; {create: always, node: { type: topic, durable: True, x-declare: {auto-delete: True, type: direct }}, link: {name:foobag4, x-declare: {exclusive: False}}}" &
+./drain -f "testq3/testme; {create: always, node: { type: topic, durable: True, x-declare: {auto-delete: True, type: direct }}, link: {name:foobag4, x-declare: {exclusive: False}}}" &
+
+NOTE:
+x-declare: {auto-delete: XXX} ONLY APPLIES TO THE 'link' portion - can be left out of the 'node' segment
+./drain -f "testq4/testme; {create: always, node: { type: topic, durable: True, x-declare: {type: direct }}, link: {name:foobag4, x-declare: {exclusive: False, auto-delete: false}}}"
