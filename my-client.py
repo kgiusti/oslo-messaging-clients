@@ -36,7 +36,9 @@ def main(argv=None):
         args = dict([(extra[x], extra[x+1]) for x in range(0, len(extra)-1, 2)])
         print "Method=%s, args=%s" % (method, str(args))
 
-    transport = messaging.get_transport(cfg.CONF, url="qpid://localhost:5672")
+    # @todo Fails with Dispatch?
+    #transport = messaging.get_transport(cfg.CONF, url="qpid://localhost:5672")
+    transport = messaging.get_transport(cfg.CONF, url="messenger://0.0.0.0:5672")
 
     target = messaging.Target(exchange=opts.exchange,
                               topic=topic,
@@ -59,13 +61,9 @@ def main(argv=None):
         rc = client.call( test_context, method, **args )
         print "Return value=%s" % str(rc)
 
-    # endpoints = [
-    #     TestEndpoint01(),
-    #     TestEndpoint02(),
-    #     ]
-    # server = messaging.get_rpc_server(transport, target, endpoints)
-    # server.start()
-    # server.wait()
+    # @todo Need this until synchronous send available
+    transport.cleanup()
+
     return 0
 
 if __name__ == "__main__":

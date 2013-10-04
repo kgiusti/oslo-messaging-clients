@@ -51,7 +51,9 @@ def main(argv=None):
     print "Running server, name=%s exchange=%s topic=%s namespace=%s" % (
         server_name, opts.exchange, opts.topic, opts.namespace)
 
-    transport = messaging.get_transport(cfg.CONF, url="qpid://localhost:5672")
+    # @todo Dispatch fails with localhost?
+    #transport = messaging.get_transport(cfg.CONF, url="qpid://localhost:5672")
+    transport = messaging.get_transport(cfg.CONF, url="messenger://0.0.0.0:5672")
 
     target = messaging.Target(exchange=opts.exchange,
                               topic=opts.topic,
