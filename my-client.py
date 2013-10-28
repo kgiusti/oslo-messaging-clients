@@ -58,10 +58,10 @@ def main(argv=None):
     CONF.rpc_backend = "openstack.common.rpc.impl_qpid"
     CONF.qpid_topology_version = 2
 
-    LOG = log.getLogger("openstack.common.rpc.common")
-    handler = logging.StreamHandler()
-    LOG.logger.addHandler(handler)
-    LOG.logger.setLevel(logging.INFO)
+    # LOG = log.getLogger("openstack.common.rpc.common")
+    # handler = logging.StreamHandler()
+    # LOG.logger.addHandler(handler)
+    # LOG.logger.setLevel(logging.INFO)
 
 
 
