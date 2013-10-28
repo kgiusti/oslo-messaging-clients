@@ -90,6 +90,8 @@ def main(argv=None):
     # server = messaging.get_rpc_server(transport, target, endpoints,
     #                                   executor='eventlet' if opts.eventlet else 'blocking')
 
+    CONF.qpid_topology_version = 2
+
     server = service.Service( server_name, opts.topic,
                               TestEndpoint01(server_name, opts.topic, opts.version))
 
