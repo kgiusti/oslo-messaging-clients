@@ -8,3 +8,22 @@ For more info on Openstack and oslo.messaging, see:
 
 Not officially part of the olso.messenger project, just my own sandbox
 to play in.
+
+
+TBD
+---
+
+o) eventlet testing (?)
+o) resource-balancing a subscription across multiple Messenger threads
+o) Lockup on failure of Messenger thread
+o) Failover/reconnect routers
+
+EXTERNAL ISSUES
+---------------
+
+dispatch: load balance across all servers servicing a given topic.
+messenger: how to cancel subscriptions?
+messenger: how to abort sent messages after a timeout?
+messenger, qpidd: how to create queues/topics on demand?
+
+
