@@ -1,10 +1,14 @@
 #!/usr/bin/env python
 #
-import optparse, sys, time
+import optparse, sys, time, logging
 
-from oslo.config import cfg
-from oslo import messaging
+#from oslo.config import cfg
+#from oslo import messaging
 
+from openstack.common import context
+from openstack.common.rpc import proxy
+from openstack.common.rpc import CONF
+from openstack.common import log
 
 def main(argv=None):
 
@@ -38,31 +42,45 @@ def main(argv=None):
 
     # @todo Fails with Dispatch?
     #transport = messaging.get_transport(cfg.CONF, url="qpid://localhost:5672")
-    transport = messaging.get_transport(cfg.CONF, url="messenger://0.0.0.0:5672")
+    #transport = messaging.get_transport(cfg.CONF, url="messenger://0.0.0.0:5672")
 
-    target = messaging.Target(exchange=opts.exchange,
-                              topic=topic,
-                              namespace=opts.namespace,
-                              server=opts.server,
-                              fanout=opts.fanout,
-                              version=opts.version)
+    # target = messaging.Target(exchange=opts.exchange,
+    #                           topic=topic,
+    #                           namespace=opts.namespace,
+    #                           server=opts.server,
+    #                           fanout=opts.fanout,
+    #                           version=opts.version)
 
-    client = messaging.RPCClient(transport, target,
-                                 timeout=opts.timeout,
-                                 version_cap=opts.version)
+    # client = messaging.RPCClient(transport, target,
+    #                              timeout=opts.timeout,
+    #                              version_cap=opts.version)
 
-    test_context = {"application": "my-client",
-                    "time": time.ctime(),
-                    "cast": opts.cast}
+    CONF.rpc_backend = "openstack.common.rpc.impl_qpid"
+
+    LOG = log.getLogger("openstack.common.rpc.common")
+    handler = logging.StreamHandler()
+    LOG.logger.addHandler(handler)
+    LOG.logger.setLevel(logging.INFO)
+
+
+
+    client = proxy.RpcProxy( topic, opts.version )
+
+    test_context = context.RequestContext('fake_user', 'fake_project')
+    # test_context = {"application": "my-client",
+    #                 "time": time.ctime(),
+    #                 "cast": opts.cast}
+
+    msg = client.make_msg( method, **args )
 
     if opts.cast:
-        client.cast( test_context, method, **args )
+        client.cast( test_context, msg )
     else:
-        rc = client.call( test_context, method, **args )
+        rc = client.call( test_context, msg )
         print "Return value=%s" % str(rc)
 
     # @todo Need this until synchronous send available
-    transport.cleanup()
+    #transport.cleanup()
 
     return 0
 
