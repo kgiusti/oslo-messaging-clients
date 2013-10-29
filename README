@@ -9,6 +9,31 @@ For more info on Openstack and oslo.messaging, see:
 Not officially part of the olso.messenger project, just my own sandbox
 to play in.
 
+RUNNING
+-------
+
+1) run a local instance of qpidd:
+$ qpidd --auth no
+
+2) set up python environment.  I do this by running "tox" in a
+oslo-incubator repo, then activating the python environment set up by
+tox:
+
+$ source /home/kgiusti/work/openstack/oslo/oslo-incubator/.tox/py27/bin/activate
+
+3) run a server (best to do this in its own dedicated terminal as it blocks):
+
+$ ./my-server.py Server01
+Running server, name=Server01 exchange=my-exchange topic=my-topic namespace=my-namespace
+
+4) run the client, invoking "methodA" on topic "my-topic" with
+arguments "arg1" and "arg2":
+
+$ ./my-client.py my-topic methodA arg1 arg2
+Calling server on topic my-topic, server=None exchange=my-exchange namespace=my-namespace fanout=None
+
+See the source for the server (my-server.py) for the RPC methods it supports.
+
 
 TBD
 ---
