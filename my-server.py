@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 #
+import eventlet
+eventlet.monkey_patch()
 import optparse, sys, time
 
 from oslo.config import cfg
