@@ -18,6 +18,8 @@ def main(argv=None):
     parser.add_option("--timeout", action="store", type="int")
     parser.add_option("--cast", action="store_true")
     parser.add_option("--version", action="store", default="1.1")
+    parser.add_option("--messenger", action="store_true",
+                      help="Use experimental Messenger transport")
 
     opts, extra = parser.parse_args(args=argv)
     if not extra:
@@ -37,8 +39,12 @@ def main(argv=None):
         print "Method=%s, args=%s" % (method, str(args))
 
     # @todo Fails with Dispatch?
-    #transport = messaging.get_transport(cfg.CONF, url="qpid://localhost:5672")
-    transport = messaging.get_transport(cfg.CONF, url="messenger://0.0.0.0:5672")
+    if opts.messenger:
+        transport = messaging.get_transport(cfg.CONF,
+                                            url="messenger://0.0.0.0:5672")
+    else:
+        transport = messaging.get_transport(cfg.CONF,
+                                            url="qpid://localhost:5672")
 
     target = messaging.Target(exchange=opts.exchange,
                               topic=topic,

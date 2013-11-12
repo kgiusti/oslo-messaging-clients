@@ -41,6 +41,8 @@ def main(argv=None):
     parser.add_option("--namespace", action="store", default="my-namespace")
     parser.add_option("--version", action="store", default="1.1")
     parser.add_option("--eventlet", action="store_true")
+    parser.add_option("--messenger", action="store_true",
+                      help="Use experimental Messenger transport")
 
     opts, extra = parser.parse_args(args=argv)
     if not extra:
@@ -52,8 +54,12 @@ def main(argv=None):
         server_name, opts.exchange, opts.topic, opts.namespace)
 
     # @todo Dispatch fails with localhost?
-    #transport = messaging.get_transport(cfg.CONF, url="qpid://localhost:5672")
-    transport = messaging.get_transport(cfg.CONF, url="messenger://0.0.0.0:5672")
+    if opts.messenger:
+        transport = messaging.get_transport(cfg.CONF,
+                                            url="messenger://0.0.0.0:5672")
+    else:
+        transport = messaging.get_transport(cfg.CONF,
+                                            url="qpid://localhost:5672")
 
     target = messaging.Target(exchange=opts.exchange,
                               topic=opts.topic,

@@ -16,10 +16,10 @@ RUNNING
 $ qpidd --auth no
 
 2) set up python environment.  I do this by running "tox" in a
-oslo-incubator repo, then activating the python environment set up by
+oslo.messaging repo, then activating the python environment set up by
 tox:
 
-$ source /home/kgiusti/work/openstack/oslo/oslo-incubator/.tox/py27/bin/activate
+$ source /home/kgiusti/work/openstack/oslo/messaging/.tox/py27/bin/activate
 
 3) run a server (best to do this in its own dedicated terminal as it blocks):
 
