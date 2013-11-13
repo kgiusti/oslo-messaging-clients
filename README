@@ -35,6 +35,38 @@ Calling server on topic my-topic, server=None exchange=my-exchange namespace=my-
 See the source for the server (my-server.py) for the RPC methods it supports.
 
 
+Using AMQP 1.0 and the Dispatch Router
+--------------------------------------
+
+These clients can be run using my experimental Proton/Messenger driver
+for olso.messaging.  You'll need to use the experimental
+oslo.messaging branch I have at Github that adds the Messenger
+transport.  See:
+https://github.com/kgiusti/oslo.messaging/tree/kgiusti/messenger
+
+However, you can't currently use the Qpid broker (qpidd) to do this.
+Instead, you'll need to use the Dispatch Router as your messaging
+"broker".  See:
+http://qpid.apache.org/components/dispatch-router/index.html for more
+details regarding the Dispatch Router.
+
+More detail TBD, but in summary you'll need to:
+
+1) Build and install the Proton/C libraries, See:
+http://qpid.apache.org/proton/index.html.  I've used the 0.5 release.
+
+2) Build Dispatch Router, linking it against the Proton libraries you installed in 1).
+
+3) Pull a copy of the experimental oslo.messenger branch.  Use tox as
+above to set up your python environment.
+
+4) If you've installed the Proton stuff in a non-standard path, you
+must set your python path so the clients can find the Proton Messenger
+python modules and C library wrapper.  For example:
+
+$ export PYTHONPATH="$PYTHONPATH:/home/kgiusti/work/proton/0.5/INSTALL/usr/lib64/python2.7/site-packages"
+
+
 TBD
 ---
 

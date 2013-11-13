@@ -1,11 +1,19 @@
 #!/usr/bin/env python
 #
-import eventlet
-eventlet.monkey_patch()
+#import eventlet
+#eventlet.monkey_patch()
 import optparse, sys, time
+import logging
 
 from oslo.config import cfg
 from oslo import messaging
+
+loggy = logging.getLogger("oslo.messaging._drivers.impl_messenger")
+loggy.setLevel(logging.DEBUG)
+ch = logging.StreamHandler()
+ch.setLevel(logging.DEBUG)
+loggy.addHandler(ch)
+
 
 class TestEndpoint01(object):
     def __init__(self, server, target=None):
@@ -57,6 +65,7 @@ def main(argv=None):
 
     # @todo Dispatch fails with localhost?
     if opts.messenger:
+        print "Using Messenger transport!"
         transport = messaging.get_transport(cfg.CONF,
                                             url="messenger://0.0.0.0:5672")
     else:
