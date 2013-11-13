@@ -53,6 +53,8 @@ def main(argv=None):
     parser.add_option("--eventlet", action="store_true")
     parser.add_option("--messenger", action="store_true",
                       help="Use experimental Messenger transport")
+    parser.add_option("--topology", action="store", type="int",
+                      help="QPID Topology version to use.")
 
     opts, extra = parser.parse_args(args=argv)
     if not extra:
@@ -66,11 +68,15 @@ def main(argv=None):
     # @todo Dispatch fails with localhost?
     if opts.messenger:
         print "Using Messenger transport!"
-        transport = messaging.get_transport(cfg.CONF,
-                                            url="messenger://0.0.0.0:5672")
+        _url = "messenger://0.0.0.0:5672"
     else:
-        transport = messaging.get_transport(cfg.CONF,
-                                            url="qpid://localhost:5672")
+        _url = "qpid://localhost:5672"
+
+    transport = messaging.get_transport(cfg.CONF, url=_url)
+
+    if opts.topology:
+        print "Using QPID topology version %d" % opts.topology
+        cfg.CONF.qpid_topology_version = opts.topology
 
     target = messaging.Target(exchange=opts.exchange,
                               topic=opts.topic,
