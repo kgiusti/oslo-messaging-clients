@@ -27,6 +27,13 @@ class TestEndpoint01(object):
         print("%s::TestEndpoint01::common( ctxt=%s arg=%s ) called!!!"
               % (self.server, str(ctx),str(args)))
 
+    def sleep5(self, ctx, **args):
+        print("%s::TestEndpoint01::sleep5( ctxt=%s arg=%s ) called!!!"
+              % (self.server, str(ctx),str(args)))
+        print("   sleeping...");
+        time.sleep(5)
+        print("   ...awake!");
+
 class TestEndpoint02(object):
     def __init__(self, server, target=None):
         self.server = server
