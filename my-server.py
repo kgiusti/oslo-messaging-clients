@@ -55,6 +55,10 @@ def main(argv=None):
                       help="Use experimental Messenger transport")
     parser.add_option("--topology", action="store", type="int",
                       help="QPID Topology version to use.")
+    parser.add_option("--auto-delete", action="store_true",
+                      help="Set amqp_auto_delete to True")
+    parser.add_option("--durable", action="store_true",
+                      help="Set amqp_durable_queues to True")
 
     opts, extra = parser.parse_args(args=argv)
     if not extra:
@@ -77,6 +81,13 @@ def main(argv=None):
     if opts.topology:
         print "Using QPID topology version %d" % opts.topology
         cfg.CONF.qpid_topology_version = opts.topology
+    if opts.auto_delete:
+        print "Enable auto-delete"
+        cfg.CONF.amqp_auto_delete = True
+    if opts.durable:
+        print "Enable durable queues"
+        cfg.CONF.amqp_durable_queues = True
+
 
     target = messaging.Target(exchange=opts.exchange,
                               topic=opts.topic,

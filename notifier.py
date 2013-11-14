@@ -17,6 +17,9 @@ loggy.addHandler(ch)
 
 def main(argv=None):
 
+    print "I'M not done yet!"
+    return 0
+
     _usage = """Usage: %prog [options] <topic> <method> [<arg-name> <arg-value>]*"""
     parser = optparse.OptionParser(usage=_usage)
     parser.add_option("--exchange", action="store", default="my-exchange")
@@ -31,10 +34,6 @@ def main(argv=None):
                       help="Use experimental Messenger transport")
     parser.add_option("--topology", action="store", type="int",
                       help="QPID Topology version to use.")
-    parser.add_option("--auto-delete", action="store_true",
-                      help="Set amqp_auto_delete to True")
-    parser.add_option("--durable", action="store_true",
-                      help="Set amqp_durable_queues to True")
 
     opts, extra = parser.parse_args(args=argv)
     if not extra:
@@ -65,33 +64,16 @@ def main(argv=None):
     if opts.topology:
         print "Using QPID topology version %d" % opts.topology
         cfg.CONF.qpid_topology_version = opts.topology
-    if opts.auto_delete:
-        print "Enable auto-delete"
-        cfg.CONF.amqp_auto_delete = True
-    if opts.durable:
-        print "Enable durable queues"
-        cfg.CONF.amqp_durable_queues = True
 
-    target = messaging.Target(exchange=opts.exchange,
-                              topic=topic,
-                              namespace=opts.namespace,
-                              server=opts.server,
-                              fanout=opts.fanout,
-                              version=opts.version)
+    notifier = messaging.Notifier(transport, topic)
 
-    client = messaging.RPCClient(transport, target,
-                                 timeout=opts.timeout,
-                                 version_cap=opts.version)
-
-    test_context = {"application": "my-client",
+    test_context = {"application": "notifier",
                     "time": time.ctime(),
                     "cast": opts.cast}
 
-    if opts.cast:
-        client.cast( test_context, method, **args )
-    else:
-        rc = client.call( test_context, method, **args )
-        print "Return value=%s" % str(rc)
+    print "NOTIFYING..."
+    notifier.info( test_context, "my-event-type", {"arg1": 1, "arg2": 2,
+                                                   "arg3": "foobar"} );
 
     # @todo Need this until synchronous send available
     transport.cleanup()
