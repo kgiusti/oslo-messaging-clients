@@ -13,7 +13,7 @@ RUNNING
 -------
 
 1) run a local instance of qpidd:
-$ qpidd --auth no
+$ qpidd --load-module=./src/amqp.so --auth no --queue-patterns exclusive --queue-patterns unicast --topic-patterns broadcast
 
 2) set up python environment.  I do this by running "tox" in a
 oslo.messaging repo, then activating the python environment set up by
@@ -34,6 +34,11 @@ Calling server on topic my-topic, server=None exchange=my-exchange namespace=my-
 
 See the source for the server (my-server.py) for the RPC methods it supports.
 
+You can also pass oslo configuration values using the --config
+argument to the client and server.  Example - to set the
+amqp_idle_timeout to 10 seconds:
+
+./my-client.py --config amqp_idle_timeout 10 my-topic methodA arg1 arg2
 
 Using AMQP 1.0 and the Dispatch Router
 --------------------------------------

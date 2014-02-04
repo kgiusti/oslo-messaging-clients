@@ -14,27 +14,32 @@ ch = logging.StreamHandler()
 ch.setLevel(logging.DEBUG)
 loggy.addHandler(ch)
 
+def handle_config_option(option, opt_string, opt_value, parser):
+    name, value = opt_value
+    print "Name=%s" % name
+    print "Value=%s" % value
+    setattr(cfg.CONF, name, value)
 
 def main(argv=None):
 
     _usage = """Usage: %prog [options] <topic> <method> [<arg-name> <arg-value>]*"""
     parser = optparse.OptionParser(usage=_usage)
     parser.add_option("--exchange", action="store", default="my-exchange")
-    #parser.add_option("--topic", action="store", default="my-topic")
     parser.add_option("--server", action="store")
     parser.add_option("--namespace", action="store", default="my-namespace")
     parser.add_option("--fanout", action="store_true")
     parser.add_option("--timeout", action="store", type="int")
     parser.add_option("--cast", action="store_true")
     parser.add_option("--version", action="store", default="1.1")
-    parser.add_option("--messenger", action="store_true",
-                      help="Use experimental Messenger transport")
+    parser.add_option("--url", action="store", default="qpid://localhost")
     parser.add_option("--topology", action="store", type="int",
                       help="QPID Topology version to use.")
     parser.add_option("--auto-delete", action="store_true",
                       help="Set amqp_auto_delete to True")
     parser.add_option("--durable", action="store_true",
                       help="Set amqp_durable_queues to True")
+    parser.add_option("--config", action="callback",
+                      callback=handle_config_option, nargs=2, type="string")
 
     opts, extra = parser.parse_args(args=argv)
     if not extra:
@@ -45,6 +50,8 @@ def main(argv=None):
     print "Calling server on topic %s, server=%s exchange=%s namespace=%s fanout=%s" % (
         topic, opts.server, opts.exchange, opts.namespace, str(opts.fanout))
 
+
+    logging.basicConfig(level=logging.INFO)  #make this an option
     method = None
     args = None
     if extra:
@@ -53,14 +60,7 @@ def main(argv=None):
         args = dict([(extra[x], extra[x+1]) for x in range(0, len(extra)-1, 2)])
         print "Method=%s, args=%s" % (method, str(args))
 
-    # @todo Fails with Dispatch?
-    if opts.messenger:
-        print "Using Messenger transport!"
-        _url = "messenger://0.0.0.0:5672"
-    else:
-        _url = "qpid://localhost:5672"
-
-    transport = messaging.get_transport(cfg.CONF, url=_url)
+    transport = messaging.get_transport(cfg.CONF, url=opts.url)
 
     if opts.topology:
         print "Using QPID topology version %d" % opts.topology

@@ -9,6 +9,7 @@ from oslo.config import cfg
 from oslo import messaging
 
 loggy = logging.getLogger("oslo.messaging._drivers.impl_messenger")
+#loggy = logging.getLogger("oslo.messaging._drivers.amqp10.proton")
 loggy.setLevel(logging.DEBUG)
 ch = logging.StreamHandler()
 ch.setLevel(logging.DEBUG)
@@ -47,6 +48,9 @@ class TestEndpoint02(object):
         print("%s::TestEndpoint02::common( ctxt=%s arg=%s ) called!!!"
               % (self.server, str(ctx),str(args)))
 
+def handle_config_option(option, opt_string, opt_value, parser):
+    name, value = opt_value
+    setattr(cfg.CONF, name, value)
 
 def main(argv=None):
 
@@ -58,14 +62,15 @@ def main(argv=None):
     parser.add_option("--namespace", action="store", default="my-namespace")
     parser.add_option("--version", action="store", default="1.1")
     parser.add_option("--eventlet", action="store_true")
-    parser.add_option("--messenger", action="store_true",
-                      help="Use experimental Messenger transport")
+    parser.add_option("--url", action="store", default="qpid://localhost")
     parser.add_option("--topology", action="store", type="int",
                       help="QPID Topology version to use.")
     parser.add_option("--auto-delete", action="store_true",
                       help="Set amqp_auto_delete to True")
     parser.add_option("--durable", action="store_true",
                       help="Set amqp_durable_queues to True")
+    parser.add_option("--config", action="callback",
+                      callback=handle_config_option, nargs=2, type="string")
 
     opts, extra = parser.parse_args(args=argv)
     if not extra:
@@ -75,15 +80,9 @@ def main(argv=None):
 
     print "Running server, name=%s exchange=%s topic=%s namespace=%s" % (
         server_name, opts.exchange, opts.topic, opts.namespace)
+    logging.basicConfig(level=logging.INFO)  #make this an option
 
-    # @todo Dispatch fails with localhost?
-    if opts.messenger:
-        print "Using Messenger transport!"
-        _url = "messenger://0.0.0.0:5672"
-    else:
-        _url = "qpid://localhost:5672"
-
-    transport = messaging.get_transport(cfg.CONF, url=_url)
+    transport = messaging.get_transport(cfg.CONF, url=opts.url)
 
     if opts.topology:
         print "Using QPID topology version %d" % opts.topology
