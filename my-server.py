@@ -72,7 +72,7 @@ def main(argv=None):
     parser.add_option("--version", action="store", default="1.1")
     parser.add_option("--eventlet", action="store_true")
     parser.add_option("--url", action="store", default="qpid://localhost")
-    parser.add_option("--topology", action="store", type="int",
+    parser.add_option("--topology", action="store", type="int", default=2,
                       help="QPID Topology version to use.")
     parser.add_option("--auto-delete", action="store_true",
                       help="Set amqp_auto_delete to True")
