@@ -30,6 +30,8 @@ def main(argv=None):
     parser.add_option("--fanout", action="store_true")
     parser.add_option("--timeout", action="store", type="int")
     parser.add_option("--cast", action="store_true")
+    parser.add_option("--repeat", action="store", type="int", default=1,
+                      help="Repeat the request N times (0=forever)")
     parser.add_option("--version", action="store", default="1.1")
     parser.add_option("--url", action="store", default="qpid://localhost")
     parser.add_option("--topology", action="store", type="int", default=2,
@@ -39,7 +41,8 @@ def main(argv=None):
     parser.add_option("--durable", action="store_true",
                       help="Set amqp_durable_queues to True")
     parser.add_option("--config", action="callback",
-                      callback=handle_config_option, nargs=2, type="string")
+                      callback=handle_config_option, nargs=2, type="string",
+                      help="set a config variable (--config name value)")
 
     opts, extra = parser.parse_args(args=argv)
     if not extra:
@@ -87,11 +90,18 @@ def main(argv=None):
                     "time": time.ctime(),
                     "cast": opts.cast}
 
-    if opts.cast:
-        client.cast( test_context, method, **args )
-    else:
-        rc = client.call( test_context, method, **args )
-        print "Return value=%s" % str(rc)
+    repeat = 0
+    while opts.repeat == 0 or repeat < opts.repeat:
+        try:
+            if opts.cast:
+                client.cast( test_context, method, **args )
+            else:
+                rc = client.call( test_context, method, **args )
+                print "Return value=%s" % str(rc)
+        except Exception as e:
+            loggy.error("Unexpected exception occured: %s" % str(e))
+            return -1
+        repeat += 1
 
     # @todo Need this until synchronous send available
     transport.cleanup()

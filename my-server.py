@@ -79,7 +79,8 @@ def main(argv=None):
     parser.add_option("--durable", action="store_true",
                       help="Set amqp_durable_queues to True")
     parser.add_option("--config", action="callback",
-                      callback=handle_config_option, nargs=2, type="string")
+                      callback=handle_config_option, nargs=2, type="string",
+                      help="set a config variable (--config name value)")
 
     opts, extra = parser.parse_args(args=argv)
     if not extra:
