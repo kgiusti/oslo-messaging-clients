@@ -8,8 +8,7 @@ import logging
 from oslo.config import cfg
 from oslo import messaging
 
-loggy = logging.getLogger("oslo.messaging._drivers.impl_messenger")
-#loggy = logging.getLogger("oslo.messaging._drivers.amqp10.proton")
+loggy = logging.getLogger(__name__)
 loggy.setLevel(logging.DEBUG)
 ch = logging.StreamHandler()
 ch.setLevel(logging.DEBUG)
@@ -20,6 +19,16 @@ class TestEndpoint01(object):
     def __init__(self, server, target=None):
         self.server = server
         self.target = target
+
+    def sink(self, ctx, **args):
+        """Drop the message - no reply sent."""
+        print("%s::TestEndpoint01:sink( ctxt=%s arg=%s ) called!!!"
+              % (self.server, str(ctx),str(args)))
+
+    def echo(self, ctx, **args):
+        print("%s::TestEndpoint01::echo( ctxt=%s arg=%s ) called!!!"
+              % (self.server, str(ctx),str(args)))
+        return ctx
 
     def methodA(self, ctx, **args):
         print("%s::TestEndpoint01::methodA( ctxt=%s arg=%s ) called!!!"

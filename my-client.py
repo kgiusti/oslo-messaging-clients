@@ -8,7 +8,7 @@ import logging
 from oslo.config import cfg
 from oslo import messaging
 
-loggy = logging.getLogger("oslo.messaging._drivers.impl_messenger")
+loggy = logging.getLogger(__name__)
 loggy.setLevel(logging.DEBUG)
 ch = logging.StreamHandler()
 ch.setLevel(logging.DEBUG)
