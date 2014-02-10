@@ -28,7 +28,7 @@ class TestEndpoint01(object):
     def echo(self, ctx, **args):
         print("%s::TestEndpoint01::echo( ctxt=%s arg=%s ) called!!!"
               % (self.server, str(ctx),str(args)))
-        return ctx
+        return {"method":"echo", "context":ctx, "args":args}
 
     def methodA(self, ctx, **args):
         print("%s::TestEndpoint01::methodA( ctxt=%s arg=%s ) called!!!"
