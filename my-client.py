@@ -43,6 +43,10 @@ def main(argv=None):
     parser.add_option("--config", action="callback",
                       callback=handle_config_option, nargs=2, type="string",
                       help="set a config variable (--config name value)")
+    parser.add_option("--payload", type="string",
+                      help="Path to a data file to use as message body.")
+    parser.add_option("--quiet", action="store_true",
+                      help="Supress console output")
 
     opts, extra = parser.parse_args(args=argv)
     if not extra:
@@ -50,29 +54,33 @@ def main(argv=None):
         return -1
     topic = extra[0]
     extra = extra[1:]
-    print "Calling server on topic %s, server=%s exchange=%s namespace=%s fanout=%s" % (
-        topic, opts.server, opts.exchange, opts.namespace, str(opts.fanout))
+    if not opts.quiet: print "Calling server on topic %s, server=%s exchange=%s namespace=%s fanout=%s" % (
+            topic, opts.server, opts.exchange, opts.namespace, str(opts.fanout))
 
 
     logging.basicConfig(level=logging.INFO)  #make this an option
     method = None
-    args = None
+    args = {}
     if extra:
         method = extra[0]
         extra = extra[1:]
         args = dict([(extra[x], extra[x+1]) for x in range(0, len(extra)-1, 2)])
-        print "Method=%s, args=%s" % (method, str(args))
+        if not opts.quiet: print "Method=%s, args=%s" % (method, str(args))
+    if opts.payload:
+        if not opts.quiet: print("Loading payload file %s" % opts.payload)
+        with open(opts.payload) as f:
+            args["payload"] = f.read()
 
     transport = messaging.get_transport(cfg.CONF, url=opts.url)
 
     if opts.topology:
-        print "Using QPID topology version %d" % opts.topology
+        if not opts.quiet: print "Using QPID topology version %d" % opts.topology
         cfg.CONF.qpid_topology_version = opts.topology
     if opts.auto_delete:
-        print "Enable auto-delete"
+        if not opts.quiet: print "Enable auto-delete"
         cfg.CONF.amqp_auto_delete = True
     if opts.durable:
-        print "Enable durable queues"
+        if not opts.quiet: print "Enable durable queues"
         cfg.CONF.amqp_durable_queues = True
 
     target = messaging.Target(exchange=opts.exchange,
@@ -97,7 +105,7 @@ def main(argv=None):
                 client.cast( test_context, method, **args )
             else:
                 rc = client.call( test_context, method, **args )
-                print "Return value=%s" % str(rc)
+                if not opts.quiet: print "Return value=%s" % str(rc)
         except Exception as e:
             loggy.error("Unexpected exception occured: %s" % str(e))
             return -1

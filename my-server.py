@@ -14,48 +14,51 @@ ch = logging.StreamHandler()
 ch.setLevel(logging.DEBUG)
 loggy.addHandler(ch)
 
+quiet = False
 
 class TestEndpoint01(object):
+    global quiet
     def __init__(self, server, target=None):
         self.server = server
         self.target = target
 
     def sink(self, ctx, **args):
         """Drop the message - no reply sent."""
-        print("%s::TestEndpoint01:sink( ctxt=%s arg=%s ) called!!!"
-              % (self.server, str(ctx),str(args)))
+        if not quiet: print("%s::TestEndpoint01:sink( ctxt=%s arg=%s ) called!!!"
+                            % (self.server, str(ctx),str(args)))
 
     def echo(self, ctx, **args):
-        print("%s::TestEndpoint01::echo( ctxt=%s arg=%s ) called!!!"
-              % (self.server, str(ctx),str(args)))
+        if not quiet: print("%s::TestEndpoint01::echo( ctxt=%s arg=%s ) called!!!"
+                            % (self.server, str(ctx),str(args)))
         return {"method":"echo", "context":ctx, "args":args}
 
     def methodA(self, ctx, **args):
-        print("%s::TestEndpoint01::methodA( ctxt=%s arg=%s ) called!!!"
-              % (self.server, str(ctx),str(args)))
+        if not quiet: print("%s::TestEndpoint01::methodA( ctxt=%s arg=%s ) called!!!"
+                            % (self.server, str(ctx),str(args)))
     def common(self, ctx, **args):
-        print("%s::TestEndpoint01::common( ctxt=%s arg=%s ) called!!!"
-              % (self.server, str(ctx),str(args)))
+        if not quiet: print("%s::TestEndpoint01::common( ctxt=%s arg=%s ) called!!!"
+                            % (self.server, str(ctx),str(args)))
 
     def sleep5(self, ctx, **args):
-        print("%s::TestEndpoint01::sleep5( ctxt=%s arg=%s ) called!!!"
-              % (self.server, str(ctx),str(args)))
-        print("   sleeping...");
+        if not quiet: print("%s::TestEndpoint01::sleep5( ctxt=%s arg=%s ) called!!!"
+                            % (self.server, str(ctx),str(args)))
+        if not quiet: print("   sleeping...");
         time.sleep(5)
-        print("   ...awake!");
+        if not quiet: print("   ...awake!");
 
 class TestEndpoint02(object):
+    global quiet
     def __init__(self, server, target=None):
         self.server = server
         self.target = target
 
     def methodB(self, ctx, **args):
-        print("%s::TestEndpoint02::methodB( ctxt=%s arg=%s ) called!!!"
-              % (self.server, str(ctx),str(args)))
+        if not quiet: print("%s::TestEndpoint02::methodB( ctxt=%s arg=%s ) called!!!"
+                            % (self.server, str(ctx),str(args)))
         return ctx
     def common(self, ctx, **args):
-        print("%s::TestEndpoint02::common( ctxt=%s arg=%s ) called!!!"
-              % (self.server, str(ctx),str(args)))
+        if not quiet: print("%s::TestEndpoint02::common( ctxt=%s arg=%s ) called!!!"
+                            % (self.server, str(ctx),str(args)))
 
 def handle_config_option(option, opt_string, opt_value, parser):
     name, value = opt_value
@@ -63,6 +66,7 @@ def handle_config_option(option, opt_string, opt_value, parser):
 
 def main(argv=None):
 
+    global quiet
     _usage = """Usage: %prog [options] <name>"""
     parser = optparse.OptionParser(usage=_usage)
     parser.add_option("--exchange", action="store", default="my-exchange")
@@ -81,27 +85,30 @@ def main(argv=None):
     parser.add_option("--config", action="callback",
                       callback=handle_config_option, nargs=2, type="string",
                       help="set a config variable (--config name value)")
+    parser.add_option("--quiet", action="store_true",
+                      help="Supress console output")
 
     opts, extra = parser.parse_args(args=argv)
     if not extra:
         print "<name> not supplied!"
         return -1
+    quiet = opts.quiet
     server_name = extra[0]
 
-    print "Running server, name=%s exchange=%s topic=%s namespace=%s" % (
-        server_name, opts.exchange, opts.topic, opts.namespace)
+    if not quiet: print "Running server, name=%s exchange=%s topic=%s namespace=%s" % (
+            server_name, opts.exchange, opts.topic, opts.namespace)
     logging.basicConfig(level=logging.INFO)  #make this an option
 
     transport = messaging.get_transport(cfg.CONF, url=opts.url)
 
     if opts.topology:
-        print "Using QPID topology version %d" % opts.topology
+        if not quiet: print "Using QPID topology version %d" % opts.topology
         cfg.CONF.qpid_topology_version = opts.topology
     if opts.auto_delete:
-        print "Enable auto-delete"
+        if not quiet: print "Enable auto-delete"
         cfg.CONF.amqp_auto_delete = True
     if opts.durable:
-        print "Enable durable queues"
+        if not quiet: print "Enable durable queues"
         cfg.CONF.amqp_durable_queues = True
 
 
@@ -122,10 +129,11 @@ def main(argv=None):
         server.start()
         while True:
             time.sleep(1)
-            sys.stdout.write('.')
-            sys.stdout.flush()
+            if not quiet:
+                sys.stdout.write('.')
+                sys.stdout.flush()
     except KeyboardInterrupt:
-        print("Stopping..")
+        if not quiet: print("Stopping..")
         server.stop()
         server.wait()
     return 0
