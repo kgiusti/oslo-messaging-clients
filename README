@@ -6,7 +6,7 @@ For more info on Openstack and oslo.messaging, see:
 
   http://www.openstack.org/
 
-Not officially part of the olso.messenger project, just my own sandbox
+Not officially part of the olso.messaging project, just my own sandbox
 to play in.
 
 RUNNING
@@ -15,11 +15,14 @@ RUNNING
 1) run a local instance of qpidd:
 $ qpidd --load-module=./src/amqp.so --auth no --queue-patterns exclusive --queue-patterns unicast --topic-patterns broadcast
 
-2) set up python environment.  I do this by running "tox" in a
-oslo.messaging repo, then activating the python environment set up by
-tox:
+2) make sure your python environment has oslo.messaging available.  If
+it does not, you can use the config.sh script to set up a virtual
+environment:
 
-$ source /home/kgiusti/work/openstack/oslo/messaging/.tox/py27/bin/activate
+$ source config.sh
+
+You can then run the clients from within this environment.  Remember
+to use the 'deactivate' command to exit the environment when done!
 
 3) run a server (best to do this in its own dedicated terminal as it blocks):
 
