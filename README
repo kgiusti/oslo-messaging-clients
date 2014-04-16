@@ -46,49 +46,65 @@ amqp_idle_timeout to 10 seconds:
 Using AMQP 1.0 and the Dispatch Router
 --------------------------------------
 
-These clients can be run using my experimental Proton/Messenger driver
-for olso.messaging.  You'll need to use the experimental
-oslo.messaging branch I have at Github that adds the Messenger
-transport.  See:
-https://github.com/kgiusti/oslo.messaging/tree/kgiusti/messenger
+These clients can be run using the proposed AMQP 1.0 driver
+for olso.messaging.  See: https://review.openstack.org/#/c/75815
 
-However, you can't currently use the Qpid broker (qpidd) to do this.
-Instead, you'll need to use the Dispatch Router as your messaging
-"broker".  See:
+This driver will work with the latest Qpid broker (qpidd), as well as
+the Qpid Dispatch Router.  See:
 http://qpid.apache.org/components/dispatch-router/index.html for more
 details regarding the Dispatch Router.
 
 More detail TBD, but in summary you'll need to:
 
-1) Build and install the Proton/C libraries, See:
-http://qpid.apache.org/proton/index.html.  I've used the 0.5 release.
+0) Build and install the Proton/C libraries, See:
+http://qpid.apache.org/proton/index.html.  I've used the 0.7 release.
 
-2) Build Dispatch Router, linking it against the Proton libraries you installed in 1).
-
-3) Pull a copy of the experimental oslo.messenger branch.  Use tox as
-above to set up your python environment.
-
-4) If you've installed the Proton stuff in a non-standard path, you
+If you've installed the Proton stuff in a non-standard path, you
 must set your python path so the clients can find the Proton Messenger
 python modules and C library wrapper.  For example:
 
-$ export PYTHONPATH="$PYTHONPATH:/home/kgiusti/work/proton/0.5/INSTALL/usr/lib64/python2.7/site-packages"
+$ export PYTHONPATH="$PYTHONPATH:/home/kgiusti/proton/0.7/INSTALL/usr/lib64/python2.7/site-packages"
+
+1) Pull a copy of the AMQP 1.0 driver for oslo.messenger (see link
+above).  Use tox as above to set up your python environment.
+
+If using Qpid:
+
+2) Start the Qpid broker with the addition of the following queue and
+topic pattern specifiers:
+
+ qpidd --queue-patterns exclusive --queue-patterns unicast --topic-patterns broadcast
+
+Note that Qpidd must be built with AMQP 1.0 support enabled!  For
+example, if building against a non-standard install of Proton:
+
+  cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+        -DCMAKE_INSTALL_PREFIX=/home/kgiusti/work/proton/0.7/INSTALL \
+        -DSYSINSTALL_BINDINGS=OFF ..
+
+else if using Dispatch Router:
+
+2a) Build Dispatch Router, linking it against the Proton libraries you
+installed in 0).  For example, if building against a non-standard
+install of Proton:
+
+  cmake -DCMAKE_INCLUDE_PATH=/home/kgiusti/work/proton/0.7/INSTALL/include \
+        -DCMAKE_LIBRARY_PATH=/home/kgiusti/work/proton/0.7/INSTALL/lib64 ..
+  export PYTHONPATH="$PYTHONPATH:$(pwd)/python"
+
+2b) Start the Dispatch Router, using the configuration provided in the
+oslo.messaging.dispatch.conf file.
+
+  qdrouterd -c ./oslo.messaging.dispatch.conf
+
+3) Start a server, using the 'amqp:' protocol URL:
+
+ my-server.py --url amqp://<address of Dispatch/Qpidd> Server01
+
+4) Run a client:
+
+ my-client.py --url amqp://<address of Dispatch/Qpidd> my-topic echo key value
 
 
-TBD
----
-
-o) eventlet testing (?)
-o) resource-balancing a subscription across multiple Messenger threads
-o) Lockup on failure of Messenger thread
-o) Failover/reconnect routers
-
-EXTERNAL ISSUES
----------------
-
-dispatch: load balance across all servers servicing a given topic.
-messenger: how to cancel subscriptions?
-messenger: how to abort sent messages after a timeout?
-messenger, qpidd: how to create queues/topics on demand?
 
 

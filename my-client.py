@@ -16,8 +16,6 @@ loggy.addHandler(ch)
 
 def handle_config_option(option, opt_string, opt_value, parser):
     name, value = opt_value
-    print "Name=%s" % name
-    print "Value=%s" % value
     setattr(cfg.CONF, name, value)
 
 def main(argv=None):
