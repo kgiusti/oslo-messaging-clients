@@ -8,12 +8,6 @@ import logging
 from oslo.config import cfg
 from oslo import messaging
 
-loggy = logging.getLogger(__name__)
-loggy.setLevel(logging.DEBUG)
-ch = logging.StreamHandler()
-ch.setLevel(logging.DEBUG)
-loggy.addHandler(ch)
-
 quiet = False
 
 class TestEndpoint01(object):
@@ -87,6 +81,8 @@ def main(argv=None):
                       help="set a config variable (--config name value)")
     parser.add_option("--quiet", action="store_true",
                       help="Supress console output")
+    parser.add_option("--debug", action="store_true",
+                      help="Enable debug logging.")
 
     opts, extra = parser.parse_args(args=argv)
     if not extra:
@@ -97,7 +93,11 @@ def main(argv=None):
 
     if not quiet: print "Running server, name=%s exchange=%s topic=%s namespace=%s" % (
             server_name, opts.exchange, opts.topic, opts.namespace)
-    logging.basicConfig(level=logging.INFO)  #make this an option
+
+    if opts.debug:
+        logging.basicConfig(level=logging.DEBUG)
+    else:
+        logging.basicConfig(level=logging.INFO)
 
     transport = messaging.get_transport(cfg.CONF, url=opts.url)
 

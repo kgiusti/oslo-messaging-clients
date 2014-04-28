@@ -8,12 +8,6 @@ import logging
 from oslo.config import cfg
 from oslo import messaging
 
-loggy = logging.getLogger(__name__)
-loggy.setLevel(logging.DEBUG)
-ch = logging.StreamHandler()
-ch.setLevel(logging.DEBUG)
-loggy.addHandler(ch)
-
 def handle_config_option(option, opt_string, opt_value, parser):
     name, value = opt_value
     setattr(cfg.CONF, name, value)
@@ -45,6 +39,8 @@ def main(argv=None):
                       help="Path to a data file to use as message body.")
     parser.add_option("--quiet", action="store_true",
                       help="Supress console output")
+    parser.add_option("--debug", action="store_true",
+                      help="Enable debug logging.")
 
     opts, extra = parser.parse_args(args=argv)
     if not extra:
@@ -55,8 +51,11 @@ def main(argv=None):
     if not opts.quiet: print "Calling server on topic %s, server=%s exchange=%s namespace=%s fanout=%s" % (
             topic, opts.server, opts.exchange, opts.namespace, str(opts.fanout))
 
+    if opts.debug:
+        logging.basicConfig(level=logging.DEBUG)
+    else:
+        logging.basicConfig(level=logging.INFO)
 
-    logging.basicConfig(level=logging.INFO)  #make this an option
     method = None
     args = {}
     if extra:
@@ -105,11 +104,13 @@ def main(argv=None):
                 rc = client.call( test_context, method, **args )
                 if not opts.quiet: print "Return value=%s" % str(rc)
         except Exception as e:
-            loggy.error("Unexpected exception occured: %s" % str(e))
+            logging.error("Unexpected exception occured: %s" % str(e))
             return -1
         repeat += 1
 
     # @todo Need this until synchronous send available
+    logging.info("RPC complete!  Cleaning up transport...")
+    time.sleep(0)
     transport.cleanup()
 
     return 0
