@@ -49,6 +49,8 @@ def main(argv=None):
     parser.add_option("--config", action="callback",
                       callback=handle_config_option, nargs=2, type="string",
                       help="set a config variable (--config name value)")
+    parser.add_option("--oslo-config", type="string",
+                      help="the oslo.messaging configuration file.")
     parser.add_option("--payload", type="string",
                       help="Path to a data file to use as message body.")
     parser.add_option("--quiet", action="store_true",
@@ -81,6 +83,9 @@ def main(argv=None):
         if not opts.quiet: print("Loading payload file %s" % opts.payload)
         with open(opts.payload) as f:
             args["payload"] = f.read()
+    if opts.oslo_config:
+        if not opts.quiet: print("Loading config file %s" % opts.oslo_config)
+        cfg.CONF(["--config-file", opts.oslo_config])
 
     transport = messaging.get_transport(cfg.CONF, url=opts.url)
 
@@ -117,9 +122,12 @@ def main(argv=None):
             else:
                 rc = client.call( test_context, method, **args )
                 if not opts.quiet: print "Return value=%s" % str(rc)
+        except KeyboardInterrupt:
+            break
         except Exception as e:
             logging.error("Unexpected exception occured: %s" % str(e))
-            return -1
+            #return -1
+            raise
         repeat += 1
 
     # @todo Need this until synchronous send available

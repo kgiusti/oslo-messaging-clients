@@ -94,6 +94,8 @@ def main(argv=None):
     parser.add_option("--config", action="callback",
                       callback=handle_config_option, nargs=2, type="string",
                       help="set a config variable (--config name value)")
+    parser.add_option("--oslo-config", type="string",
+                      help="the oslo.messaging configuration file.")
     parser.add_option("--quiet", action="store_true",
                       help="Supress console output")
     parser.add_option("--debug", action="store_true",
@@ -113,6 +115,9 @@ def main(argv=None):
         logging.basicConfig(level=logging.DEBUG)
     else:
         logging.basicConfig(level=logging.INFO)
+    if opts.oslo_config:
+        if not opts.quiet: print("Loading config file %s" % opts.oslo_config)
+        cfg.CONF(["--config-file", opts.oslo_config])
 
     transport = messaging.get_transport(cfg.CONF, url=opts.url)
 
