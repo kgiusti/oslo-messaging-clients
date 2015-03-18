@@ -23,10 +23,11 @@ from oslo_config import cfg
 import oslo_messaging
 
 import logging
-loggy = logging.getLogger("oslo_messaging.notify.dispatcher")
-loggy.setLevel(logging.DEBUG)
+#loggy = logging.getLogger("oslo_messaging.notify.dispatcher")
+loggy = logging.getLogger("oslo_messaging._drivers.protocols.amqp.driver")
+loggy.setLevel(logging.INFO)
 ch = logging.StreamHandler()
-ch.setLevel(logging.DEBUG)
+ch.setLevel(logging.INFO)
 loggy.addHandler(ch)
 
 
@@ -39,6 +40,7 @@ def main(argv=None):
                       help="Supress console output")
     parser.add_option("--type", action="store", default="event")
     parser.add_option("--payload", action="store", default="payload")
+    parser.add_option("--count", action="store", type="int", default=1)
 
     opts, topic = parser.parse_args(args=argv)
     if not topic:
@@ -53,7 +55,9 @@ def main(argv=None):
     n = oslo_messaging.notify.notifier.Notifier(transport, opts.name,
                                                 driver='messaging',
                                                 topic=topic)
-    return n.debug({}, opts.type, {"payload":opts.payload})
+    for i in range(opts.count):
+        n.debug({}, opts.type, {"payload":opts.payload})
+    return 0
 
 if __name__ == "__main__":
     sys.exit(main())

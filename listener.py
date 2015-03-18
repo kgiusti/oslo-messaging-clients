@@ -23,10 +23,11 @@ from oslo_config import cfg
 import oslo_messaging
 
 import logging
-loggy = logging.getLogger("oslo_messaging.notify.dispatcher")
-loggy.setLevel(logging.DEBUG)
+#loggy = logging.getLogger("oslo_messaging.notify.dispatcher")
+loggy = logging.getLogger("oslo_messaging._drivers.protocols.amqp.driver")
+loggy.setLevel(logging.INFO)
 ch = logging.StreamHandler()
-ch.setLevel(logging.DEBUG)
+ch.setLevel(logging.INFO)
 loggy.addHandler(ch)
 
 
