@@ -117,7 +117,7 @@ def main(argv=None):
     repeat = 0
     while opts.repeat == 0 or repeat < opts.repeat:
         try:
-            if opts.cast:
+            if opts.cast or opts.fanout:
                 client.cast( test_context, method, **args )
             else:
                 rc = client.call( test_context, method, **args )
