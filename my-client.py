@@ -54,23 +54,26 @@ def main(argv=None):
     parser.add_option("--payload", type="string",
                       help="Path to a data file to use as message body.")
     parser.add_option("--quiet", action="store_true",
-                      help="Supress console output")
+                      help="Deprecated")
     parser.add_option("--debug", action="store_true",
                       help="Enable debug logging.")
+    parser.add_option("--stats", action="store_true",
+                      help="Calculate throughput")
 
     opts, extra = parser.parse_args(args=argv)
     if not extra:
-        print "<topic> not supplied!!"
+        print "Error: <topic> not supplied!!"
         return -1
     topic = extra[0]
     extra = extra[1:]
-    if not opts.quiet: print "Calling server on topic %s, server=%s exchange=%s namespace=%s fanout=%s" % (
-            topic, opts.server, opts.exchange, opts.namespace, str(opts.fanout))
+    if opts.debug:
+        print("Calling server on topic %s, server=%s exchange=%s namespace=%s fanout=%s" %
+              (topic, opts.server, opts.exchange, opts.namespace, str(opts.fanout)))
 
     if opts.debug:
         logging.basicConfig(level=logging.DEBUG)
     else:
-        logging.basicConfig(level=logging.INFO)
+        logging.basicConfig(level=logging.WARN)
 
     method = None
     args = {}
@@ -78,25 +81,25 @@ def main(argv=None):
         method = extra[0]
         extra = extra[1:]
         args = dict([(extra[x], extra[x+1]) for x in range(0, len(extra)-1, 2)])
-        if not opts.quiet: print "Method=%s, args=%s" % (method, str(args))
+        if opts.debug: print("Method=%s, args=%s" % (method, str(args)))
     if opts.payload:
-        if not opts.quiet: print("Loading payload file %s" % opts.payload)
+        if opts.debug: print("Loading payload file %s" % opts.payload)
         with open(opts.payload) as f:
             args["payload"] = f.read()
     if opts.oslo_config:
-        if not opts.quiet: print("Loading config file %s" % opts.oslo_config)
+        if opts.debug: print("Loading config file %s" % opts.oslo_config)
         cfg.CONF(["--config-file", opts.oslo_config])
 
     transport = messaging.get_transport(cfg.CONF, url=opts.url)
 
     if opts.topology:
-        if not opts.quiet: print "Using QPID topology version %d" % opts.topology
+        if opts.debug: print("Using QPID topology version %d" % opts.topology)
         cfg.CONF.qpid_topology_version = opts.topology
     if opts.auto_delete:
-        if not opts.quiet: print "Enable auto-delete"
+        if opts.debug: print("Enable auto-delete")
         cfg.CONF.amqp_auto_delete = True
     if opts.durable:
-        if not opts.quiet: print "Enable durable queues"
+        if opts.debug: print("Enable durable queues")
         cfg.CONF.amqp_durable_queues = True
 
     target = messaging.Target(exchange=opts.exchange,
@@ -108,12 +111,13 @@ def main(argv=None):
 
     client = messaging.RPCClient(transport, target,
                                  timeout=opts.timeout,
-                                 version_cap=opts.version)
+                                 version_cap=opts.version).prepare()
 
     test_context = {"application": "my-client",
                     "time": time.ctime(),
                     "cast": opts.cast}
 
+    start_time = time.time()
     repeat = 0
     while opts.repeat == 0 or repeat < opts.repeat:
         try:
@@ -121,14 +125,17 @@ def main(argv=None):
                 client.cast( test_context, method, **args )
             else:
                 rc = client.call( test_context, method, **args )
-                if not opts.quiet: print "Return value=%s" % str(rc)
+                if opts.debug: print("RPC return value=%s" % str(rc))
         except KeyboardInterrupt:
             break
         except Exception as e:
             logging.error("Unexpected exception occured: %s" % str(e))
-            #return -1
             raise
         repeat += 1
+
+    if opts.stats:
+        stats = (time.time() - start_time)/float(repeat) if repeat else 0
+        print("Messages per second: %6.4f" % stats)
 
     # @todo Need this until synchronous send available
     logging.info("RPC complete!  Cleaning up transport...")
