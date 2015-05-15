@@ -134,7 +134,8 @@ def main(argv=None):
         repeat += 1
 
     if opts.stats:
-        stats = (time.time() - start_time)/float(repeat) if repeat else 0
+        delta = time.time() - start_time
+        stats = float(repeat)/float(delta) if delta else 0
         print("Messages per second: %6.4f" % stats)
 
     # @todo Need this until synchronous send available
