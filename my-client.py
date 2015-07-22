@@ -19,8 +19,8 @@
 import optparse, sys, time
 import logging
 
-from oslo.config import cfg
-from oslo import messaging
+from oslo_config import cfg
+import oslo_messaging as messaging
 
 def handle_config_option(option, opt_string, opt_value, parser):
     name, value = opt_value
@@ -62,7 +62,7 @@ def main(argv=None):
 
     opts, extra = parser.parse_args(args=argv)
     if not extra:
-        print "Error: <topic> not supplied!!"
+        print("Error: <topic> not supplied!!")
         return -1
     topic = extra[0]
     extra = extra[1:]

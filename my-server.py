@@ -20,8 +20,8 @@
 import optparse, sys, time
 import logging
 
-from oslo.config import cfg
-from oslo import messaging
+from oslo_config import cfg
+import oslo_messaging as messaging
 
 quiet = False
 
@@ -103,13 +103,13 @@ def main(argv=None):
 
     opts, extra = parser.parse_args(args=argv)
     if not extra:
-        print "<name> not supplied!"
+        print("<name> not supplied!")
         return -1
     quiet = opts.quiet
     server_name = extra[0]
 
-    if not quiet: print "Running server, name=%s exchange=%s topic=%s namespace=%s" % (
-            server_name, opts.exchange, opts.topic, opts.namespace)
+    if not quiet: print("Running server, name=%s exchange=%s topic=%s namespace=%s" % (
+            server_name, opts.exchange, opts.topic, opts.namespace))
 
     if opts.debug:
         logging.basicConfig(level=logging.DEBUG)
@@ -122,13 +122,13 @@ def main(argv=None):
     transport = messaging.get_transport(cfg.CONF, url=opts.url)
 
     if opts.topology:
-        if not quiet: print "Using QPID topology version %d" % opts.topology
+        if not quiet: print("Using QPID topology version %d" % opts.topology)
         cfg.CONF.qpid_topology_version = opts.topology
     if opts.auto_delete:
-        if not quiet: print "Enable auto-delete"
+        if not quiet: print("Enable auto-delete")
         cfg.CONF.amqp_auto_delete = True
     if opts.durable:
-        if not quiet: print "Enable durable queues"
+        if not quiet: print("Enable durable queues")
         cfg.CONF.amqp_durable_queues = True
 
 

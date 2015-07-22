@@ -44,7 +44,7 @@ def main(argv=None):
 
     opts, topic = parser.parse_args(args=argv)
     if not topic:
-        if not opts.quiet: print "missing topic!"
+        if not opts.quiet: print("missing topic!")
         return -1
     topic = topic[0]
 
