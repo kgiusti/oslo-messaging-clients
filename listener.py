@@ -23,12 +23,6 @@ from oslo_config import cfg
 import oslo_messaging
 
 import logging
-#loggy = logging.getLogger("oslo_messaging.notify.dispatcher")
-loggy = logging.getLogger("oslo_messaging._drivers.protocols.amqp.driver")
-loggy.setLevel(logging.INFO)
-ch = logging.StreamHandler()
-ch.setLevel(logging.INFO)
-loggy.addHandler(ch)
 
 
 class TestNotificationEndpoint(object):
@@ -50,6 +44,8 @@ def main(argv=None):
     parser.add_option("--pool", action="store")
     parser.add_option("--quiet", action="store_true", default=False,
                       help="Supress console output")
+    parser.add_option("--debug", action="store_true",
+                      help="Enable debug logging.")
 
     opts, topics = parser.parse_args(args=argv)
     if not topics:
@@ -58,6 +54,12 @@ def main(argv=None):
 
     if not opts.quiet:
         print("listener %s: url=%s, topics=%s" % (opts.name, opts.url, topics))
+
+    if opts.debug:
+        logging.basicConfig(level=logging.DEBUG)
+    else:
+        logging.basicConfig(level=logging.WARN)
+
     targets = [oslo_messaging.Target(exchange=opts.exchange,
                                      topic=t,
                                      namespace=opts.namespace) for t in topics]

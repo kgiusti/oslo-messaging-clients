@@ -23,12 +23,6 @@ from oslo_config import cfg
 import oslo_messaging
 
 import logging
-#loggy = logging.getLogger("oslo_messaging.notify.dispatcher")
-loggy = logging.getLogger("oslo_messaging._drivers.protocols.amqp.driver")
-loggy.setLevel(logging.INFO)
-ch = logging.StreamHandler()
-ch.setLevel(logging.INFO)
-loggy.addHandler(ch)
 
 
 def main(argv=None):
@@ -41,12 +35,19 @@ def main(argv=None):
     parser.add_option("--type", action="store", default="event")
     parser.add_option("--payload", action="store", default="payload")
     parser.add_option("--count", action="store", type="int", default=1)
+    parser.add_option("--debug", action="store_true",
+                      help="Enable debug logging.")
 
     opts, topic = parser.parse_args(args=argv)
     if not topic:
         if not opts.quiet: print("missing topic!")
         return -1
     topic = topic[0]
+
+    if opts.debug:
+        logging.basicConfig(level=logging.DEBUG)
+    else:
+        logging.basicConfig(level=logging.WARN)
 
     if not opts.quiet:
         print("notifier %s: url=%s, topic=%s" % (opts.name, opts.url, topic))
