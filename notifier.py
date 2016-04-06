@@ -37,6 +37,8 @@ def main(argv=None):
     parser.add_option("--count", action="store", type="int", default=1)
     parser.add_option("--debug", action="store_true",
                       help="Enable debug logging.")
+    parser.add_option("--oslo-config", type="string",
+                      help="the oslo.messaging configuration file.")
 
     opts, topic = parser.parse_args(args=argv)
     if not topic:
@@ -49,6 +51,10 @@ def main(argv=None):
     else:
         logging.basicConfig(level=logging.WARN)
 
+    if opts.oslo_config:
+        if opts.debug: print("Loading config file %s" % opts.oslo_config)
+        cfg.CONF(["--config-file", opts.oslo_config])
+
     if not opts.quiet:
         print("notifier %s: url=%s, topic=%s" % (opts.name, opts.url, topic))
 
@@ -58,6 +64,8 @@ def main(argv=None):
                                                 topic=topic)
     for i in range(opts.count):
         n.debug({}, opts.type, {"payload":opts.payload})
+
+    transport.cleanup()
     return 0
 
 if __name__ == "__main__":
