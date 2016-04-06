@@ -74,7 +74,7 @@ def handle_config_option(option, opt_string, opt_value, parser):
     setattr(cfg.CONF, name, value)
 
 def main(argv=None):
-
+    logging.warning("my-server.py has been superseded by rpc-server")
     global quiet
     _usage = """Usage: %prog [options] <name>"""
     parser = optparse.OptionParser(usage=_usage)

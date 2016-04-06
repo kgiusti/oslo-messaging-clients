@@ -26,6 +26,7 @@ import logging
 
 
 def main(argv=None):
+    logging.warning("notifier.py has been superseded by notifier")
     _usage = """Usage: %prog [options] <topic>"""
     parser = optparse.OptionParser(usage=_usage)
     parser.add_option("--name", action="store", default=uuid.uuid4().hex)

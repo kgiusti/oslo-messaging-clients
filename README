@@ -1,6 +1,15 @@
-A simple RPC client and server, built around the oslo.messaging
-library from Openstack.  An academic exercise simply to gain an
-understanding of the oslo.messenger API!
+A set of simple oslo.messaging clients. You can use these clients to
+play with the oslo.messaging API.
+
+Clients:
+--------
+
+rpc-server - Listens for RPC requests and sends replies.
+rpc-client - Sends RPC requests to an RPC server.
+listener - Listens for notification messages.
+notifier - Sends notification messages.
+
+Use the --help option for more detail.
 
 For more info on Openstack and oslo.messaging, see:
 
@@ -26,22 +35,23 @@ to use the 'deactivate' command to exit the environment when done!
 
 3) run a server (best to do this in its own dedicated terminal as it blocks):
 
-$ ./my-server.py Server01
+$ ./rpc-server Server01
 Running server, name=Server01 exchange=my-exchange topic=my-topic namespace=my-namespace
 
 4) run the client, invoking "methodA" on topic "my-topic" with
 arguments "arg1" and "arg2":
 
-$ ./my-client.py my-topic methodA arg1 arg2
+$ ./rpc-client methodA arg1 arg2
 Calling server on topic my-topic, server=None exchange=my-exchange namespace=my-namespace fanout=None
 
-See the source for the server (my-server.py) for the RPC methods it supports.
+See the source for the server (rpc-server) for the RPC methods it supports.
 
-You can also pass oslo configuration values using the --config
-argument to the client and server.  Example - to set the
-amqp_idle_timeout to 10 seconds:
+You can set the oslo.messaging configuration values by passing the
+clients a configuration file.  Use the --oslo-config <file> parameter.
 
-./my-client.py --config amqp_idle_timeout 10 my-topic methodA arg1 arg2
+Example: to configure the rpc-server with values from ./configs/rpc-server.conf:
+
+./rpc-server.py --oslo-config ./configs/rpc-server.conf MyServer
 
 Using AMQP 1.0 and the Dispatch Router
 --------------------------------------
@@ -99,11 +109,11 @@ oslo.messaging.dispatch.conf file.
 
 3) Start a server, using the 'amqp:' protocol URL:
 
- my-server.py --url amqp://<address of Dispatch/Qpidd> Server01
+ rpc-server --url amqp://<address of Dispatch/Qpidd> Server01
 
 4) Run a client:
 
- my-client.py --url amqp://<address of Dispatch/Qpidd> my-topic echo key value
+ rpc-client --url amqp://<address of Dispatch/Qpidd> echo key value
 
 
 

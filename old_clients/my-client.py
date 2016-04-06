@@ -27,7 +27,7 @@ def handle_config_option(option, opt_string, opt_value, parser):
     setattr(cfg.CONF, name, value)
 
 def main(argv=None):
-
+    logging.warning("my-client.py has been superseded by rpc-client")
     _usage = """Usage: %prog [options] <topic> <method> [<arg-name> <arg-value>]*"""
     parser = optparse.OptionParser(usage=_usage)
     parser.add_option("--exchange", action="store", default="my-exchange")
