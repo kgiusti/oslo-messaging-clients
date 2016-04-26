@@ -55,6 +55,7 @@ class TestEndpoint(object):
 def main(argv=None):
 
     global debug
+    global quiet
     _usage = """Usage: %prog [options] <server name>"""
     parser = optparse.OptionParser(usage=_usage)
     parser.add_option("--topic", action="store", default="my-topic",

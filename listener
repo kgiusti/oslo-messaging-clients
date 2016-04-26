@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #
-# Copyright 2015 Kenneth A. Giusti
+# Copyright 2016 Kenneth A. Giusti
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,48 +15,62 @@
 # limitations under the License.
 #
 
+import logging
 import optparse
 import sys
+import time
 import uuid
 
 from oslo_config import cfg
 import oslo_messaging
 
-import logging
-
 
 class TestNotificationEndpoint(object):
-    def __init__(self, name):
+    def __init__(self, name, quiet=False):
         self.name = name
+        self.quiet = quiet
+
+    def _report(self, severity, ctx, publisher, event_type, payload, metadata):
+        if not self.quiet:
+            print("%s Notification %s:%s:%s:%s:%s"
+                  % (self.name, severity, publisher,
+                     event_type, payload, metadata))
 
     def debug(self, ctx, publisher, event_type, payload, metadata):
-        print("%s:debug:%s:%s:%s:%s"
-              % (self.name, publisher, event_type, payload, metadata))
+        self._report("debug", ctx, publisher, event_type, payload, metadata)
+    def audit(self, ctx, publisher, event_type, payload, metadata):
+        self._report("audit", ctx, publisher, event_type, payload, metadata)
+    def critical(self, ctx, publisher, event_type, payload, metadata):
+        self._report("critical", ctx, publisher, event_type, payload, metadata)
+    def error(self, ctx, publisher, event_type, payload, metadata):
+        self._report("error", ctx, publisher, event_type, payload, metadata)
+    def info(self, ctx, publisher, event_type, payload, metadata):
+        self._report("info", ctx, publisher, event_type, payload, metadata)
+    def warn(self, ctx, publisher, event_type, payload, metadata):
+        self._report("warn", ctx, publisher, event_type, payload, metadata)
 
 
 def main(argv=None):
     _usage = """Usage: %prog [options] <target, ...>"""
-    logging.warning("listener.py has been superseded by notifier")
     parser = optparse.OptionParser(usage=_usage)
-    parser.add_option("--name", action="store", default=uuid.uuid4().hex)
-    parser.add_option("--url", action="store", default="qpid://localhost")
-    parser.add_option("--exchange", action="store")
-    parser.add_option("--namespace", action="store")
+    parser.add_option("--name", action="store",
+                      default="listener-" + uuid.uuid4().hex)
+    parser.add_option("--topic", action="store", default="notifications",
+                      help="target topic, default 'notifications'")
+    parser.add_option("--url", action="store", default="rabbit://localhost",
+                      help="transport address, default 'rabbit://localhost'")
     parser.add_option("--pool", action="store")
+    parser.add_option("--oslo-config", type="string",
+                      help="the oslo.messaging configuration file.")
     parser.add_option("--quiet", action="store_true", default=False,
                       help="Supress console output")
     parser.add_option("--debug", action="store_true",
                       help="Enable debug logging.")
-    parser.add_option("--oslo-config", type="string",
-                      help="the oslo.messaging configuration file.")
 
-    opts, topics = parser.parse_args(args=argv)
-    if not topics:
-        if not opts.quiet: print("missing topics!")
-        return -1
+    opts, __ = parser.parse_args(args=argv)
 
     if not opts.quiet:
-        print("listener %s: url=%s, topics=%s" % (opts.name, opts.url, topics))
+        print("listener %s: url=%s, topics=%s" % (opts.name, opts.url, opts.topic))
 
     if opts.debug:
         logging.basicConfig(level=logging.DEBUG)
@@ -67,19 +81,17 @@ def main(argv=None):
         if opts.debug: print("Loading config file %s" % opts.oslo_config)
         cfg.CONF(["--config-file", opts.oslo_config])
 
-    targets = [oslo_messaging.Target(exchange=opts.exchange,
-                                     topic=t,
-                                     namespace=opts.namespace) for t in topics]
-
+    targets = [oslo_messaging.Target(topic=opts.topic)]
     transport = oslo_messaging.get_transport(cfg.CONF, url=opts.url)
     listener = oslo_messaging.get_notification_listener(transport,
                                                         targets,
-                                                        [TestNotificationEndpoint(opts.name)],
+                                                        [TestNotificationEndpoint(opts.name,
+                                                                                  opts.quiet)],
                                                         pool=opts.pool)
     try:
         listener.start()
         while True:
-            time.sleep(1)
+            time.sleep(10)
     except KeyboardInterrupt:
         print("Stopping..")
     listener.stop()

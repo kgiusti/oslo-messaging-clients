@@ -14,38 +14,42 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-#import eventlet
-#eventlet.monkey_patch()
-import optparse, sys, time
+
+import logging
+import optparse
+import sys
+import time
 import uuid
 
 from oslo_config import cfg
 import oslo_messaging
 
-import logging
-
 
 def main(argv=None):
-    logging.warning("notifier.py has been superseded by notifier")
-    _usage = """Usage: %prog [options] <topic>"""
+    _usage = """Usage: %prog [options]"""
     parser = optparse.OptionParser(usage=_usage)
-    parser.add_option("--name", action="store", default=uuid.uuid4().hex)
-    parser.add_option("--url", action="store", default="qpid://localhost")
+    parser.add_option("--name", action="store",
+                      default="notifier-" + uuid.uuid4().hex)
+    parser.add_option("--topic", action="store", default="notifications",
+                      help="target topic, default 'notifications'")
+    parser.add_option("--url", action="store", default="rabbit://localhost",
+                      help="transport address, default 'rabbit://localhost'")
     parser.add_option("--quiet", action="store_true", default=False,
                       help="Supress console output")
-    parser.add_option("--type", action="store", default="event")
+    parser.add_option("--type", action="store", default="test.event",
+                      help="Type of event, default 'test.event'")
+    parser.add_option("--severity", action="store", default="debug",
+                      help="Severity of event, default 'debug'")
     parser.add_option("--payload", action="store", default="payload")
-    parser.add_option("--count", action="store", type="int", default=1)
+    parser.add_option("--count", action="store", type="int", default=1,
+                      help="Send COUNT notifications, default 1")
     parser.add_option("--debug", action="store_true",
                       help="Enable debug logging.")
     parser.add_option("--oslo-config", type="string",
                       help="the oslo.messaging configuration file.")
 
-    opts, topic = parser.parse_args(args=argv)
-    if not topic:
-        if not opts.quiet: print("missing topic!")
-        return -1
-    topic = topic[0]
+    opts, __ = parser.parse_args(args=argv)
+    topic = opts.topic
 
     if opts.debug:
         logging.basicConfig(level=logging.DEBUG)
@@ -57,14 +61,17 @@ def main(argv=None):
         cfg.CONF(["--config-file", opts.oslo_config])
 
     if not opts.quiet:
-        print("notifier %s: url=%s, topic=%s" % (opts.name, opts.url, topic))
+        print("notifier %s: url=%s, topic=%s severity=%s"
+              % (opts.name, opts.url, topic, opts.severity))
 
     transport = oslo_messaging.get_transport(cfg.CONF, url=opts.url)
-    n = oslo_messaging.notify.notifier.Notifier(transport, opts.name,
+    n = oslo_messaging.notify.notifier.Notifier(transport,
+                                                opts.name,
                                                 driver='messaging',
                                                 topic=topic)
     for i in range(opts.count):
-        n.debug({}, opts.type, {"payload":opts.payload})
+        f = getattr(n, opts.severity, 'debug')
+        f({}, opts.type, {"payload":opts.payload})
 
     transport.cleanup()
     return 0
