@@ -51,7 +51,7 @@ class TestNotificationEndpoint(object):
 
 
 def main(argv=None):
-    _usage = """Usage: %prog [options] <target, ...>"""
+    _usage = """Usage: %prog [options]"""
     parser = optparse.OptionParser(usage=_usage)
     parser.add_option("--name", action="store",
                       default="listener-" + uuid.uuid4().hex)

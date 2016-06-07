@@ -48,7 +48,7 @@ class TestEndpoint(object):
             print("%s::TestEndpoint::sleeps( ctxt=%s arg=%s ) called!!!"
                   % (self.server, str(ctx),str(args)))
         if debug: print("   sleeping...");
-        time.sleep(args.get("timeout", 10))
+        time.sleep(float(args.get("timeout", 10.0)))
         if debug: print("   ...awake!");
 
 
