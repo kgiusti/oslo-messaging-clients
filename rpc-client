@@ -17,10 +17,44 @@
 import logging
 import optparse
 import sys
+import threading
 import time
 
 from oslo_config import cfg
 import oslo_messaging as messaging
+
+class ClientThread(threading.Thread):
+    def __init__(self, transport, target, opts, method, **kwargs):
+        super(ClientThread, self).__init__()
+        self.transport = transport
+        self.target = target
+        self.opts = opts
+        self.method = method
+        self.kwargs = kwargs
+        self.daemon = True
+        self.start()
+
+    def run(self):
+        opts = self.opts
+        client = messaging.RPCClient(self.transport,
+                                     self.target,
+                                     timeout=opts.timeout,
+                                     version_cap=opts.version).prepare()
+        test_context = {"application": "rpc-client", "time": time.ctime()}
+
+        repeat = 0
+        while opts.repeat == 0 or repeat < opts.repeat:
+            try:
+                if opts.cast or opts.fanout:
+                    client.cast(test_context, self.method, **self.kwargs)
+                else:
+                    rc = client.call(test_context, self.method, **self.kwargs)
+                    if not opts.quiet: print("RPC return value=%s" % str(rc))
+            except Exception as e:
+                logging.error("Unexpected exception occured: %s" % str(e))
+                break
+            repeat += 1
+
 
 def main(argv=None):
 
@@ -41,7 +75,7 @@ def main(argv=None):
     parser.add_option("--cast", action="store_true",
                       help="cast the RPC call")
     parser.add_option("--repeat", action="store", type="int", default=1,
-                      help="Repeat the request N times (0=forever)")
+                      help="Repeat the request N times per thread (0=forever)")
     parser.add_option("--version", action="store", default="1.1")
     parser.add_option("--url", action="store", default="rabbit://localhost",
                       help="transport address, default 'rabbit://localhost'")
@@ -55,6 +89,8 @@ def main(argv=None):
                       help="Calculate throughput")
     parser.add_option("--quiet", action="store_true",
                       help="Suppress all stdout output")
+    parser.add_option("--threads", type="int", action="store", default=1,
+                      help="Number of threads (default 1)")
 
     opts, extra = parser.parse_args(args=argv)
     if not extra:
@@ -95,32 +131,21 @@ def main(argv=None):
                               server=opts.server,
                               fanout=opts.fanout,
                               version=opts.version)
-
-    client = messaging.RPCClient(transport, target,
-                                 timeout=opts.timeout,
-                                 version_cap=opts.version).prepare()
-
-    test_context = {"application": "rpc-client", "time": time.ctime()}
-
+    threads = []
     start_time = time.time()
-    repeat = 0
-    while opts.repeat == 0 or repeat < opts.repeat:
-        try:
-            if opts.cast or opts.fanout:
-                client.cast( test_context, method, **args )
-            else:
-                rc = client.call( test_context, method, **args )
-                if not opts.quiet: print("RPC return value=%s" % str(rc))
-        except KeyboardInterrupt:
-            break
-        except Exception as e:
-            logging.error("Unexpected exception occured: %s" % str(e))
-            raise
-        repeat += 1
+    for t in range(opts.threads):
+        threads.append(ClientThread(transport, target, opts,
+                                    method, **args))
+    try:
+        for t in threads:
+            t.join()
+    except KeyboardInterrupt:
+        pass
 
     if opts.stats:
         delta = time.time() - start_time
-        stats = float(repeat)/float(delta) if delta else 0
+        msg_count = opts.repeat * opts.threads
+        stats = float(msg_count)/float(delta) if delta else 0
         print("Messages per second: %6.4f" % stats)
 
     # @todo Need this until synchronous send available

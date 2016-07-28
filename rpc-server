@@ -71,9 +71,9 @@ def main(argv=None):
                       help="target version, default '1.1'")
     parser.add_option("--url", action="store", default="rabbit://localhost",
                       help="transport address, default 'rabbit://localhost'")
-    parser.add_option("--executor", action="store", default="blocking",
+    parser.add_option("--executor", action="store", default="eventlet",
                       help="executor to use 'eventlet|threading|blocking'"
-                      " default blocking")
+                      " default eventlet")
     parser.add_option("--oslo-config", type="string",
                       help="the oslo.messaging configuration file.")
     parser.add_option("--debug", action="store_true",

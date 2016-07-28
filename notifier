@@ -18,11 +18,35 @@
 import logging
 import optparse
 import sys
+import threading
 import time
 import uuid
 
 from oslo_config import cfg
 import oslo_messaging
+
+
+class ClientThread(threading.Thread):
+    def __init__(self, transport, topic, opts):
+        super(ClientThread, self).__init__()
+        self.transport = transport
+        self.topic = topic
+        self.opts = opts
+        self.daemon = True
+        self.start()
+
+    def run(self):
+        opts = self.opts
+        client = oslo_messaging.notify.notifier.Notifier(self.transport,
+                                                         opts.name,
+                                                         driver='messaging',
+                                                         topic=self.topic)
+        try:
+            f = getattr(client, opts.severity, 'debug')
+            for t in range(opts.count):
+                f({}, opts.type, {"payload":opts.payload})
+        except Exception as e:
+            logging.error("Unexpected exception occured: %s" % str(e))
 
 
 def main(argv=None):
@@ -42,11 +66,15 @@ def main(argv=None):
                       help="Severity of event, default 'debug'")
     parser.add_option("--payload", action="store", default="payload")
     parser.add_option("--count", action="store", type="int", default=1,
-                      help="Send COUNT notifications, default 1")
+                      help="Send COUNT notifications per thread, default 1")
     parser.add_option("--debug", action="store_true",
                       help="Enable debug logging.")
     parser.add_option("--oslo-config", type="string",
                       help="the oslo.messaging configuration file.")
+    parser.add_option("--threads", type="int", action="store", default=1,
+                      help="Number of threads (default 1)")
+    parser.add_option("--stats", action="store_true",
+                      help="Calculate throughput")
 
     opts, __ = parser.parse_args(args=argv)
     topic = opts.topic
@@ -65,13 +93,22 @@ def main(argv=None):
               % (opts.name, opts.url, topic, opts.severity))
 
     transport = oslo_messaging.get_transport(cfg.CONF, url=opts.url)
-    n = oslo_messaging.notify.notifier.Notifier(transport,
-                                                opts.name,
-                                                driver='messaging',
-                                                topic=topic)
-    for i in range(opts.count):
-        f = getattr(n, opts.severity, 'debug')
-        f({}, opts.type, {"payload":opts.payload})
+
+    threads = []
+    start_time = time.time()
+    for t in range(opts.threads):
+        threads.append(ClientThread(transport, topic, opts))
+    try:
+        for t in threads:
+            t.join()
+    except KeyboardInterrupt:
+        pass
+
+    if opts.stats:
+        delta = time.time() - start_time
+        msg_count = opts.count * opts.threads
+        stats = float(msg_count)/float(delta) if delta else 0
+        print("Messages per second: %6.4f" % stats)
 
     transport.cleanup()
     return 0
