@@ -14,6 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import eventlet
+eventlet.monkey_patch()
 
 import logging
 import optparse
@@ -60,6 +62,9 @@ def main(argv=None):
     parser.add_option("--url", action="store", default="rabbit://localhost",
                       help="transport address, default 'rabbit://localhost'")
     parser.add_option("--pool", action="store")
+    parser.add_option("--executor", action="store", default="eventlet",
+                      help="executor to use 'eventlet|threading|blocking'"
+                      " default eventlet")
     parser.add_option("--oslo-config", type="string",
                       help="the oslo.messaging configuration file.")
     parser.add_option("--quiet", action="store_true", default=False,
@@ -87,6 +92,7 @@ def main(argv=None):
                                                         targets,
                                                         [TestNotificationEndpoint(opts.name,
                                                                                   opts.quiet)],
+                                                        executor=opts.executor,
                                                         pool=opts.pool)
     try:
         listener.start()
