@@ -28,6 +28,7 @@ import oslo_messaging as messaging
 debug = False
 quiet = False
 
+
 class TestEndpoint(object):
     global quiet
     global debug
@@ -53,6 +54,12 @@ class TestEndpoint(object):
         if debug: print("   sleeping...");
         time.sleep(float(args.get("timeout", 10.0)))
         if debug: print("   ...awake!");
+
+    def fail(self, ctx, **args):
+        if not quiet:
+            print("%s::TestEndpoint::fail( ctxt=%s arg=%s ) called!!!"
+                  % (self.server, str(ctx),str(args)))
+        raise RuntimeError("fail method invoked!")
 
 
 def main(argv=None):
