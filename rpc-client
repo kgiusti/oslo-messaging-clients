@@ -64,8 +64,8 @@ def main(argv=None):
                       help="target topic, default 'my-topic'")
     parser.add_option("--exchange", action="store", default="my-exchange",
                       help="target exchange, default 'my-exchange'")
-    parser.add_option("--namespace", action="store", default="my-namespace",
-                      help="target namespace, default 'my-namespace'")
+    parser.add_option("--namespace", action="store",
+                      help="target namespace, default None")
     parser.add_option("--server", action="store",
                       help="Send only to the named server")
     parser.add_option("--fanout", action="store_true",
@@ -76,7 +76,8 @@ def main(argv=None):
                       help="cast the RPC call")
     parser.add_option("--repeat", action="store", type="int", default=1,
                       help="Repeat the request N times per thread (0=forever)")
-    parser.add_option("--version", action="store", default="1.1")
+    parser.add_option("--version", action="store",
+                      help="message version")
     parser.add_option("--url", action="store", default="rabbit://localhost",
                       help="transport address, default 'rabbit://localhost'")
     parser.add_option("--oslo-config", type="string",

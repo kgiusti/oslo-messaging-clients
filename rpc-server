@@ -72,10 +72,10 @@ def main(argv=None):
                       help="target topic, default 'my-topic'")
     parser.add_option("--exchange", action="store", default="my-exchange",
                       help="target exchange, default 'my-exchange'")
-    parser.add_option("--namespace", action="store", default="my-namespace",
-                      help="target namespace, default 'my-namespace'")
-    parser.add_option("--version", action="store", default="1.1",
-                      help="target version, default '1.1'")
+    parser.add_option("--namespace", action="store",
+                      help="target namespace, default None")
+    parser.add_option("--version", action="store",
+                      help="message version")
     parser.add_option("--url", action="store", default="rabbit://localhost",
                       help="transport address, default 'rabbit://localhost'")
     parser.add_option("--executor", action="store", default="eventlet",
