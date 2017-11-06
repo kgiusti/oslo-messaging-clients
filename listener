@@ -87,7 +87,7 @@ def main(argv=None):
         cfg.CONF(["--config-file", opts.oslo_config])
 
     targets = [oslo_messaging.Target(topic=opts.topic)]
-    transport = oslo_messaging.get_transport(cfg.CONF, url=opts.url)
+    transport = oslo_messaging.get_notification_transport(cfg.CONF, url=opts.url)
     listener = oslo_messaging.get_notification_listener(transport,
                                                         targets,
                                                         [TestNotificationEndpoint(opts.name,

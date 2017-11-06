@@ -40,7 +40,7 @@ class ClientThread(threading.Thread):
         client = oslo_messaging.notify.notifier.Notifier(self.transport,
                                                          opts.name,
                                                          driver='messaging',
-                                                         topic=self.topic)
+                                                         topics=[self.topic])
         try:
             f = getattr(client, opts.severity, 'debug')
             for t in range(opts.count):
@@ -92,7 +92,7 @@ def main(argv=None):
         print("notifier %s: url=%s, topic=%s severity=%s"
               % (opts.name, opts.url, topic, opts.severity))
 
-    transport = oslo_messaging.get_transport(cfg.CONF, url=opts.url)
+    transport = oslo_messaging.get_notification_transport(cfg.CONF, url=opts.url)
 
     threads = []
     start_time = time.time()
