@@ -14,24 +14,46 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import eventlet
-eventlet.monkey_patch()
 
-import logging
-import optparse
+
 import sys
 import time
 
+from oslo_log import log as logging
 from oslo_config import cfg
 import oslo_messaging as messaging
 
-debug = False
 quiet = False
+
+_options = [
+    cfg.StrOpt('name',
+               help='Name of this server (used for direct addressing)',
+               required=True),
+    cfg.StrOpt('topic',
+               default='my-topic',
+               help="target topic, default 'my-topic'"),
+    cfg.StrOpt('exchange',
+               default="my-exchange",
+               help="target exchange, default 'my-exchange'"),
+    cfg.StrOpt('namespace',
+               help="target namespace, default None"),
+    cfg.StrOpt("url",
+               required=True,
+               default="rabbit://localhost:5672",
+               help="transport address, default 'rabbit://localhost:5672'"),
+    cfg.StrOpt("target_version",
+               help="Override the default version in the target address"),
+    cfg.BoolOpt("quiet",
+                default=False,
+                help="Suppress all stdout output"),
+    cfg.StrOpt("log_levels",
+               help="Set module specific log levels, e.g."
+               " 'amqp=WARN,oslo.messaging=INFO,...'")
+]
 
 
 class TestEndpoint(object):
     global quiet
-    global debug
     def __init__(self, server, target=None):
         self.server = server
         self.target = target
@@ -51,9 +73,8 @@ class TestEndpoint(object):
         if not quiet:
             print("%s::TestEndpoint::sleeps( ctxt=%s arg=%s ) called!!!"
                   % (self.server, str(ctx),str(args)))
-        if debug: print("   sleeping...");
         time.sleep(float(args.get("timeout", 10.0)))
-        if debug: print("   ...awake!");
+        return args.get("reply")
 
     def fail(self, ctx, **args):
         if not quiet:
@@ -64,71 +85,45 @@ class TestEndpoint(object):
 
 def main(argv=None):
 
-    global debug
     global quiet
-    _usage = """Usage: %prog [options] <server name>"""
-    parser = optparse.OptionParser(usage=_usage)
-    parser.add_option("--topic", action="store", default="my-topic",
-                      help="target topic, default 'my-topic'")
-    parser.add_option("--exchange", action="store", default="my-exchange",
-                      help="target exchange, default 'my-exchange'")
-    parser.add_option("--namespace", action="store",
-                      help="target namespace, default None")
-    parser.add_option("--version", action="store",
-                      help="message version")
-    parser.add_option("--url", action="store", default="rabbit://localhost",
-                      help="transport address, default 'rabbit://localhost'")
-    parser.add_option("--executor", action="store", default="eventlet",
-                      help="executor to use 'eventlet|threading|blocking'"
-                      " default eventlet")
-    parser.add_option("--oslo-config", type="string",
-                      help="the oslo.messaging configuration file.")
-    parser.add_option("--debug", action="store_true",
-                      help="Enable debug logging.")
-    parser.add_option("--quiet", action="store_true",
-                      help="Suppress all stdout output")
 
-    opts, extra = parser.parse_args(args=argv)
-    if not extra:
-        print("<server-name> not supplied!")
-        return -1
-    debug = opts.debug
-    quiet = opts.quiet
-    server_name = extra[0]
+    logging.register_options(cfg.CONF)
+    cfg.CONF.register_cli_opts(_options)
+    cfg.CONF(sys.argv[1:])
+    if cfg.CONF.log_levels:
+        logging.set_defaults(
+            default_log_levels=cfg.CONF.log_levels.split(',')
+        )
+    logging.setup(cfg.CONF, "rpc-server")
 
-    if debug:
-        print("Running server, name=%s exchange=%s topic=%s namespace=%s"
-              % (server_name, opts.exchange, opts.topic, opts.namespace))
+    quiet = cfg.CONF.quiet
+    server_name = cfg.CONF.name
+    exchange = cfg.CONF.exchange
+    topic = cfg.CONF.topic
+    namespace = cfg.CONF.namespace
+    url = cfg.CONF.url
+    target_version = cfg.CONF.target_version
 
-    if debug:
-        logging.basicConfig(level=logging.DEBUG)
-    else:
-        logging.basicConfig(level=logging.INFO)
+    transport = messaging.get_rpc_transport(cfg.CONF, url=url)
 
-    if opts.oslo_config:
-        if opts.debug: print("Loading config file %s" % opts.oslo_config)
-        cfg.CONF(["--config-file", opts.oslo_config])
-
-    transport = messaging.get_transport(cfg.CONF, url=opts.url)
-
-    target = messaging.Target(exchange=opts.exchange,
-                              topic=opts.topic,
-                              namespace=opts.namespace,
+    target = messaging.Target(exchange=exchange,
+                              topic=topic,
+                              namespace=namespace,
                               server=server_name,
-                              version=opts.version)
+                              version=target_version)
     server = messaging.get_rpc_server(transport, target,
                                       [TestEndpoint(server_name, target)],
-                                      executor=opts.executor)
+                                      executor='threading')
 
+    server.start()
+    if not quiet:
+        print("Running server, name=%s exchange=%s topic=%s namespace=%s"
+              % (server_name, exchange, topic, namespace))
     try:
-        server.start()
         while True:
             time.sleep(1)
-            if debug:
-                sys.stdout.write('.')
-                sys.stdout.flush()
     except KeyboardInterrupt:
-        if debug: print("Stopping..")
+        if not quiet: print("Stopping..")
         server.stop()
         server.wait()
     return 0

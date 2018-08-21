@@ -14,42 +14,93 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import logging
-import optparse
+
 import sys
 import threading
 import time
 
+from oslo_log import log as logging
 from oslo_config import cfg
 import oslo_messaging as messaging
 
+
+_options = [
+    cfg.StrOpt("method",
+               help="The name of the method to call on the server"),
+    cfg.StrOpt("kwargs",
+               help="Method arguments in the form 'name=value ...'"),
+    cfg.StrOpt("topic",
+               default="my-topic",
+               help="target topic, default 'my-topic'"),
+    cfg.StrOpt('exchange',
+               default="my-exchange",
+               help="target exchange, default 'my-exchange'"),
+    cfg.StrOpt('namespace',
+               help="target namespace, default None"),
+    cfg.StrOpt("url",
+               required=True,
+               default="rabbit://localhost:5672",
+               help="transport address, default 'rabbit://localhost:5672'"),
+    cfg.StrOpt("target_version",
+               help="Override the default version in the target address"),
+    cfg.BoolOpt("quiet",
+                default=False,
+                help="Suppress all stdout output"),
+    cfg.StrOpt("server",
+               help="Send only to the named server"),
+    cfg.IntOpt("timeout",
+               default=60,
+               help="timeout RPC request in seconds, default 60"),
+    cfg.BoolOpt("fanout",
+                default=False,
+                help="Send RPC fanout cast"),
+    cfg.BoolOpt("cast",
+                default=False,
+                help="Send RPC cast"),
+    cfg.IntOpt("repeat",
+               default=1,
+               help="Repeat the request N times per thread (0=forever)"),
+    cfg.StrOpt("payload",
+               help="Path to a data file to use as message body."),
+    cfg.BoolOpt("stats",
+                default=False,
+                help="Calculate throughput"),
+    cfg.IntOpt("threads",
+               default=1,
+               help="Number of threads (default 1)"),
+    cfg.StrOpt("log_levels",
+               help="Set module specific log levels, e.g."
+               " 'amqp=WARN,oslo.messaging=INFO,...'")
+]
+
+
 class ClientThread(threading.Thread):
-    def __init__(self, transport, target, opts, method, **kwargs):
+    def __init__(self, conf, transport, target, method, kwargs):
         super(ClientThread, self).__init__()
         self.transport = transport
         self.target = target
-        self.opts = opts
+        self.conf = conf
         self.method = method
         self.kwargs = kwargs
         self.daemon = True
         self.start()
 
     def run(self):
-        opts = self.opts
+        conf = self.conf
         client = messaging.RPCClient(self.transport,
                                      self.target,
-                                     timeout=opts.timeout,
-                                     version_cap=opts.version).prepare()
+                                     timeout=conf.timeout,
+                                     version_cap=conf.target_version).prepare()
         test_context = {"application": "rpc-client", "time": time.ctime()}
 
         repeat = 0
-        while opts.repeat == 0 or repeat < opts.repeat:
+        while conf.repeat == 0 or repeat < conf.repeat:
             try:
-                if opts.cast or opts.fanout:
+                if conf.cast or conf.fanout:
                     client.cast(test_context, self.method, **self.kwargs)
                 else:
                     rc = client.call(test_context, self.method, **self.kwargs)
-                    if not opts.quiet: print("RPC return value=%s" % str(rc))
+                    if not conf.quiet: print("RPC return value=%s" % str(rc))
             except Exception as e:
                 logging.error("Unexpected exception occured: %s" % str(e))
                 break
@@ -58,99 +109,70 @@ class ClientThread(threading.Thread):
 
 def main(argv=None):
 
-    _usage = """Usage: %prog [options] <method> [<arg-name=arg-value>]*"""
-    parser = optparse.OptionParser(usage=_usage)
-    parser.add_option("--topic", action="store", default="my-topic",
-                      help="target topic, default 'my-topic'")
-    parser.add_option("--exchange", action="store", default="my-exchange",
-                      help="target exchange, default 'my-exchange'")
-    parser.add_option("--namespace", action="store",
-                      help="target namespace, default None")
-    parser.add_option("--server", action="store",
-                      help="Send only to the named server")
-    parser.add_option("--fanout", action="store_true",
-                      help="Fanout target")
-    parser.add_option("--timeout", action="store", type="int", default=10,
-                      help="timeout RPC request in seconds, default 10")
-    parser.add_option("--cast", action="store_true",
-                      help="cast the RPC call")
-    parser.add_option("--repeat", action="store", type="int", default=1,
-                      help="Repeat the request N times per thread (0=forever)")
-    parser.add_option("--version", action="store",
-                      help="message version")
-    parser.add_option("--url", action="store", default="rabbit://localhost",
-                      help="transport address, default 'rabbit://localhost'")
-    parser.add_option("--oslo-config", type="string",
-                      help="the oslo.messaging configuration file.")
-    parser.add_option("--payload", type="string",
-                      help="Path to a data file to use as message body.")
-    parser.add_option("--debug", action="store_true",
-                      help="Enable debug logging.")
-    parser.add_option("--stats", action="store_true",
-                      help="Calculate throughput")
-    parser.add_option("--quiet", action="store_true",
-                      help="Suppress all stdout output")
-    parser.add_option("--threads", type="int", action="store", default=1,
-                      help="Number of threads (default 1)")
+    logging.register_options(cfg.CONF)
+    cfg.CONF.register_cli_opts(_options)
+    cfg.CONF(sys.argv[1:])
+    if cfg.CONF.log_levels:
+        logging.set_defaults(
+            default_log_levels=cfg.CONF.log_levels.split(',')
+        )
+    logging.setup(cfg.CONF, "rpc-client")
 
-    opts, extra = parser.parse_args(args=argv)
-    if not extra:
-        print("Error: <method> not supplied!!")
-        return -1
+    quiet = cfg.CONF.quiet
+    server = cfg.CONF.server
+    exchange = cfg.CONF.exchange
+    topic = cfg.CONF.topic
+    namespace = cfg.CONF.namespace
+    url = cfg.CONF.url
+    target_version = cfg.CONF.target_version
+    fanout = cfg.CONF.fanout
+    cast = cfg.CONF.cast
+    payload = cfg.CONF.payload
 
-    if opts.debug:
-        logging.basicConfig(level=logging.DEBUG)
-    else:
-        logging.basicConfig(level=logging.WARN)
-
-    method = None
-    args = {}
-    method = extra[0]
-    extra = extra[1:]
-    args = dict([(x.split('=')[0], x.split('=')[1] if len(x) > 1 else None)
-                 for x in extra])
-    if opts.debug:
+    method = cfg.CONF.method or "echo"
+    args = cfg.CONF.kwargs.split() if cfg.CONF.kwargs else []
+    kwargs = dict([(x.split('=')[0], x.split('=')[1] if len(x) > 1 else None)
+                   for x in args])
+    if not quiet:
         print("Calling %s (%s) on server=%s exchange=%s topic=%s namespace=%s"
               " fanout=%s cast=%s"
-              % (method, extra, opts.server, opts.exchange, opts.topic,
-                 opts.namespace, str(opts.fanout), str(opts.cast)))
+              % (method, kwargs, server, exchange, topic,
+                 namespace, str(fanout), str(cast)))
 
-    if opts.payload:
-        if opts.debug: print("Loading payload file %s" % opts.payload)
-        with open(opts.payload) as f:
-            args["payload"] = f.read()
+    if payload:
+        if not quiet:
+            print("Loading payload file %s" % payload)
+        with open(payload) as f:
+            kwargs["payload"] = f.read()
 
-    if opts.oslo_config:
-        if opts.debug: print("Loading config file %s" % opts.oslo_config)
-        cfg.CONF(["--config-file", opts.oslo_config])
+    transport = messaging.get_rpc_transport(cfg.CONF, url=url)
 
-    transport = messaging.get_transport(cfg.CONF, url=opts.url)
-
-    target = messaging.Target(exchange=opts.exchange,
-                              topic=opts.topic,
-                              namespace=opts.namespace,
-                              server=opts.server,
-                              fanout=opts.fanout,
-                              version=opts.version)
+    target = messaging.Target(exchange=exchange,
+                              topic=topic,
+                              namespace=namespace,
+                              server=server,
+                              fanout=fanout,
+                              version=target_version)
     threads = []
     start_time = time.time()
-    for t in range(opts.threads):
-        threads.append(ClientThread(transport, target, opts,
-                                    method, **args))
+    for t in range(cfg.CONF.threads):
+        threads.append(ClientThread(cfg.CONF, transport, target,
+                                    method, kwargs))
     try:
         for t in threads:
             t.join()
     except KeyboardInterrupt:
         pass
 
-    if opts.stats:
+    if cfg.CONF.stats:
         delta = time.time() - start_time
-        msg_count = opts.repeat * opts.threads
+        msg_count = cfg.CONF.repeat * cfg.CONF.threads
         stats = float(msg_count)/float(delta) if delta else 0
         print("Messages per second: %6.4f" % stats)
 
     # @todo Need this until synchronous send available
-    logging.info("RPC complete!  Cleaning up transport...")
+    if not quiet:
+        print("RPC complete!  Cleaning up transport...")
     time.sleep(0)
     transport.cleanup()
     return 0

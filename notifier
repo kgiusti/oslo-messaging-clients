@@ -15,98 +15,111 @@
 # limitations under the License.
 #
 
-import logging
-import optparse
 import sys
 import threading
 import time
 import uuid
 
 from oslo_config import cfg
+from oslo_log import log as logging
 import oslo_messaging
 
 
+_options = [
+    cfg.StrOpt("topic",
+               default="my-topic",
+               help="target topic, default 'my-topic'"),
+    cfg.StrOpt("url",
+               required=True,
+               default="rabbit://localhost:5672",
+               help="transport address, default 'rabbit://localhost:5672'"),
+    cfg.BoolOpt("quiet",
+                default=False,
+                help="Suppress all stdout output"),
+    cfg.StrOpt("type",
+               default="test.event",
+               help="Type of event, default 'test.event'"),
+    cfg.StrOpt("severity",
+               default="debug",
+               help="Severity of event, default 'debug'"),
+    cfg.IntOpt("count",
+               default=1,
+               help="Send COUNT notifications per thread, default 1"),
+    cfg.StrOpt("payload",
+               help="Text for message body."),
+    cfg.BoolOpt("stats",
+                default=False,
+                help="Calculate throughput"),
+    cfg.IntOpt("threads",
+               default=1,
+               help="Number of threads (default 1)"),
+    cfg.StrOpt("log_levels",
+               help="Set module specific log levels, e.g."
+               " 'amqp=WARN,oslo.messaging=INFO,...'")
+]
+
+
 class ClientThread(threading.Thread):
-    def __init__(self, transport, topic, opts):
+    def __init__(self, conf, name, transport, topic):
         super(ClientThread, self).__init__()
         self.transport = transport
+        self.name = name
         self.topic = topic
-        self.opts = opts
+        self.conf = conf
         self.daemon = True
         self.start()
 
     def run(self):
-        opts = self.opts
-        client = oslo_messaging.notify.notifier.Notifier(self.transport,
-                                                         opts.name,
-                                                         driver='messaging',
-                                                         topics=[self.topic])
+        conf = self.conf
+        cls = oslo_messaging.notify.notifier.Notifier
+        client = cls(self.transport,
+                     self.name,
+                     driver='messaging',
+                     topics=[self.topic])
         try:
-            f = getattr(client, opts.severity, 'debug')
-            for t in range(opts.count):
-                f({}, opts.type, {"payload":opts.payload})
+            f = getattr(client, conf.severity, 'debug')
+            for t in range(conf.count):
+                f({}, conf.type, {"payload": conf.payload})
         except Exception as e:
             logging.error("Unexpected exception occured: %s" % str(e))
 
 
 def main(argv=None):
-    _usage = """Usage: %prog [options]"""
-    parser = optparse.OptionParser(usage=_usage)
-    parser.add_option("--name", action="store",
-                      default="notifier-" + uuid.uuid4().hex)
-    parser.add_option("--topic", action="store", default="notifications",
-                      help="target topic, default 'notifications'")
-    parser.add_option("--url", action="store", default="rabbit://localhost",
-                      help="transport address, default 'rabbit://localhost'")
-    parser.add_option("--quiet", action="store_true", default=False,
-                      help="Supress console output")
-    parser.add_option("--type", action="store", default="test.event",
-                      help="Type of event, default 'test.event'")
-    parser.add_option("--severity", action="store", default="debug",
-                      help="Severity of event, default 'debug'")
-    parser.add_option("--payload", action="store", default="payload")
-    parser.add_option("--count", action="store", type="int", default=1,
-                      help="Send COUNT notifications per thread, default 1")
-    parser.add_option("--debug", action="store_true",
-                      help="Enable debug logging.")
-    parser.add_option("--oslo-config", type="string",
-                      help="the oslo.messaging configuration file.")
-    parser.add_option("--threads", type="int", action="store", default=1,
-                      help="Number of threads (default 1)")
-    parser.add_option("--stats", action="store_true",
-                      help="Calculate throughput")
 
-    opts, __ = parser.parse_args(args=argv)
-    topic = opts.topic
+    conf = cfg.CONF
+    logging.register_options(conf)
+    conf.register_cli_opts(_options)
+    conf(sys.argv[1:])
+    if cfg.CONF.log_levels:
+        logging.set_defaults(
+            default_log_levels=cfg.CONF.log_levels.split(',')
+        )
+    logging.setup(conf, "notifier")
 
-    if opts.debug:
-        logging.basicConfig(level=logging.DEBUG)
-    else:
-        logging.basicConfig(level=logging.WARN)
+    topic = conf.topic
+    quiet = conf.quiet
+    url = conf.url
+    severity = conf.severity
 
-    if opts.oslo_config:
-        if opts.debug: print("Loading config file %s" % opts.oslo_config)
-        cfg.CONF(["--config-file", opts.oslo_config])
-
-    if not opts.quiet:
-        print("notifier %s: url=%s, topic=%s severity=%s"
-              % (opts.name, opts.url, topic, opts.severity))
-
-    transport = oslo_messaging.get_notification_transport(cfg.CONF, url=opts.url)
+    transport = oslo_messaging.get_notification_transport(cfg.CONF, url=url)
 
     threads = []
     start_time = time.time()
-    for t in range(opts.threads):
-        threads.append(ClientThread(transport, topic, opts))
+    for t in range(conf.threads):
+        name = "notifier-" + uuid.uuid4().hex,
+        threads.append(ClientThread(conf, name, transport, topic))
+        if not quiet:
+            print("notifier %s: url=%s, topic=%s severity=%s"
+                  % (name, url, topic, severity))
     try:
         for t in threads:
             t.join()
     except KeyboardInterrupt:
         pass
 
-    if opts.stats:
+    if conf.stats:
         delta = time.time() - start_time
-        msg_count = opts.count * opts.threads
+        msg_count = conf.count * conf.threads
         stats = float(msg_count)/float(delta) if delta else 0
         print("Messages per second: %6.4f" % stats)
 

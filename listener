@@ -14,17 +14,33 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import eventlet
-eventlet.monkey_patch()
 
-import logging
-import optparse
 import sys
 import time
 import uuid
 
 from oslo_config import cfg
 import oslo_messaging
+from oslo_log import log as logging
+
+
+_options = [
+    cfg.StrOpt("topic",
+               default="my-topic",
+               help="target topic, default 'my-topic'"),
+    cfg.StrOpt("url",
+               required=True,
+               default="rabbit://localhost:5672",
+               help="transport address, default 'rabbit://localhost:5672'"),
+    cfg.BoolOpt("quiet",
+                default=False,
+                help="Suppress all stdout output"),
+    cfg.StrOpt("pool",
+               help="Notification pool identifier"),
+    cfg.StrOpt("log_levels",
+               help="Set module specific log levels, e.g."
+               " 'amqp=WARN,oslo.messaging=INFO,...'")
+]
 
 
 class TestNotificationEndpoint(object):
@@ -53,49 +69,34 @@ class TestNotificationEndpoint(object):
 
 
 def main(argv=None):
-    _usage = """Usage: %prog [options]"""
-    parser = optparse.OptionParser(usage=_usage)
-    parser.add_option("--name", action="store",
-                      default="listener-" + uuid.uuid4().hex)
-    parser.add_option("--topic", action="store", default="notifications",
-                      help="target topic, default 'notifications'")
-    parser.add_option("--url", action="store", default="rabbit://localhost",
-                      help="transport address, default 'rabbit://localhost'")
-    parser.add_option("--pool", action="store")
-    parser.add_option("--executor", action="store", default="eventlet",
-                      help="executor to use 'eventlet|threading|blocking'"
-                      " default eventlet")
-    parser.add_option("--oslo-config", type="string",
-                      help="the oslo.messaging configuration file.")
-    parser.add_option("--quiet", action="store_true", default=False,
-                      help="Supress console output")
-    parser.add_option("--debug", action="store_true",
-                      help="Enable debug logging.")
 
-    opts, __ = parser.parse_args(args=argv)
+    logging.register_options(cfg.CONF)
+    cfg.CONF.register_cli_opts(_options)
+    cfg.CONF(sys.argv[1:])
+    if cfg.CONF.log_levels:
+        logging.set_defaults(
+            default_log_levels=cfg.CONF.log_levels.split(',')
+        )
+    logging.setup(cfg.CONF, "listener")
 
-    if not opts.quiet:
-        print("listener %s: url=%s, topics=%s" % (opts.name, opts.url, opts.topic))
+    quiet = cfg.CONF.quiet
+    name = "listener-" + uuid.uuid4().hex
+    topic = cfg.CONF.topic
+    url = cfg.CONF.url
+    pool = cfg.CONF.pool
 
-    if opts.debug:
-        logging.basicConfig(level=logging.DEBUG)
-    else:
-        logging.basicConfig(level=logging.WARN)
-
-    if opts.oslo_config:
-        if opts.debug: print("Loading config file %s" % opts.oslo_config)
-        cfg.CONF(["--config-file", opts.oslo_config])
-
-    targets = [oslo_messaging.Target(topic=opts.topic)]
-    transport = oslo_messaging.get_notification_transport(cfg.CONF, url=opts.url)
+    targets = [oslo_messaging.Target(topic=topic)]
+    transport = oslo_messaging.get_notification_transport(cfg.CONF, url=url)
     listener = oslo_messaging.get_notification_listener(transport,
                                                         targets,
-                                                        [TestNotificationEndpoint(opts.name,
-                                                                                  opts.quiet)],
-                                                        executor=opts.executor,
-                                                        pool=opts.pool)
+                                                        [TestNotificationEndpoint(name,
+                                                                                  quiet)],
+                                                        executor="threading",
+                                                        pool=pool)
+    listener.start()
+    if not quiet:
+        print("listener %s: url=%s, topics=%s" % (name, url, topic))
     try:
-        listener.start()
         while True:
             time.sleep(10)
     except KeyboardInterrupt:

@@ -1,3 +1,4 @@
 oslo.messaging
-qpid-python
+oslo.config
+oslo.log
 pyngus
