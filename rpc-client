@@ -23,6 +23,7 @@ from oslo_log import log as logging
 from oslo_config import cfg
 import oslo_messaging as messaging
 
+LOG = logging.getLogger(__name__)
 
 _options = [
     cfg.StrOpt("method",
@@ -102,7 +103,7 @@ class ClientThread(threading.Thread):
                     rc = client.call(test_context, self.method, **self.kwargs)
                     if not conf.quiet: print("RPC return value=%s" % str(rc))
             except Exception as e:
-                logging.error("Unexpected exception occured: %s" % str(e))
+                LOG.error("Unexpected exception occured: %s" % str(e))
                 break
             repeat += 1
 
