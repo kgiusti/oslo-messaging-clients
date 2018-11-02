@@ -107,7 +107,10 @@ def main(argv=None):
                   " [fanout]" if conf.fanout else "",
                   " [cast]" if conf.cast else "")
 
-    transport = messaging.get_rpc_transport(conf, url=url)
+    if hasattr(messaging, "get_rpc_transport"):
+        transport = messaging.get_rpc_transport(conf, url=url)
+    else:
+        transport = messaging.get_transport(conf, url=url)
 
     target = messaging.Target(exchange=conf.exchange,
                               topic=conf.topic,
