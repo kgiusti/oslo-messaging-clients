@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #
-# Copyright 2016 Kenneth A. Giusti
+# Copyright 2018 Kenneth A. Giusti
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,21 +15,31 @@
 # limitations under the License.
 #
 
+import logging
 import sys
 import threading
 import time
 
-from oslo_log import log as logging
 from oslo_config import cfg
+from oslo_messaging.opts import list_opts
 import oslo_messaging as messaging
 
-LOG = logging.getLogger(__name__)
+#
+# A simple RPC Client
+#
+
 
 _options = [
     cfg.StrOpt("method",
+               default="echo",
                help="The name of the method to call on the server"),
     cfg.StrOpt("kwargs",
+               default="name=echo",
                help="Method arguments in the form 'name=value ...'"),
+    cfg.StrOpt("url",
+               help="transport address, default 'rabbit://localhost:5672'"),
+    cfg.StrOpt("server",
+               help="Send only to the named server"),
     cfg.StrOpt("topic",
                default="my-topic",
                help="target topic, default 'my-topic'"),
@@ -38,17 +48,8 @@ _options = [
                help="target exchange, default 'my-exchange'"),
     cfg.StrOpt('namespace',
                help="target namespace, default None"),
-    cfg.StrOpt("url",
-               required=True,
-               default="rabbit://localhost:5672",
-               help="transport address, default 'rabbit://localhost:5672'"),
     cfg.StrOpt("target_version",
                help="Override the default version in the target address"),
-    cfg.BoolOpt("quiet",
-                default=False,
-                help="Suppress all stdout output"),
-    cfg.StrOpt("server",
-               help="Send only to the named server"),
     cfg.IntOpt("timeout",
                default=60,
                help="timeout RPC request in seconds, default 60"),
@@ -61,17 +62,12 @@ _options = [
     cfg.IntOpt("repeat",
                default=1,
                help="Repeat the request N times per thread (0=forever)"),
-    cfg.StrOpt("payload",
-               help="Path to a data file to use as message body."),
     cfg.BoolOpt("stats",
                 default=False,
                 help="Calculate throughput"),
-    cfg.IntOpt("threads",
-               default=1,
-               help="Number of threads (default 1)"),
-    cfg.StrOpt("log_levels",
-               help="Set module specific log levels, e.g."
-               " 'amqp=WARN,oslo.messaging=INFO,...'")
+    cfg.BoolOpt("debug",
+                default=False,
+                help="Enable debug logging")
 ]
 
 
@@ -88,93 +84,72 @@ class ClientThread(threading.Thread):
 
     def run(self):
         conf = self.conf
-        client = messaging.RPCClient(self.transport,
-                                     self.target,
-                                     timeout=conf.timeout,
-                                     version_cap=conf.target_version).prepare()
-        test_context = {"application": "rpc-client", "time": time.ctime()}
 
-        repeat = 0
+
+def main(argv=None):
+    conf = cfg.CONF
+    conf.register_cli_opts(_options)
+    for group, options in list_opts():
+        conf.register_opts(options, group=group)
+
+    conf(sys.argv[1:])
+
+    level = logging.DEBUG if conf.debug else logging.INFO
+    logging.basicConfig(level=level)
+
+    url = conf.url or conf.transport_url
+    args = conf.kwargs.split() if conf.kwargs else []
+    kwargs = dict([(x.split('=')[0], x.split('=')[1] if len(x) > 1 else None)
+                   for x in args])
+
+    logging.debug("Calling %s (%s)%s%s%s...", conf.method, kwargs,
+                  (" [server=%s]" % conf.server) if conf.server else "",
+                  " [fanout]" if conf.fanout else "",
+                  " [cast]" if conf.cast else "")
+
+    transport = messaging.get_rpc_transport(conf, url=url)
+
+    target = messaging.Target(exchange=conf.exchange,
+                              topic=conf.topic,
+                              namespace=conf.namespace,
+                              server=conf.server,
+                              fanout=conf.fanout,
+                              version=conf.target_version)
+    client = messaging.RPCClient(transport,
+                                 target,
+                                 timeout=conf.timeout,
+                                 version_cap=conf.target_version).prepare()
+    test_context = {"application": "rpc-client", "time": time.ctime()}
+
+    start_time = time.time()
+    repeat = 0
+    try:
         while conf.repeat == 0 or repeat < conf.repeat:
             try:
                 if conf.cast or conf.fanout:
-                    client.cast(test_context, self.method, **self.kwargs)
+                    client.cast(test_context, conf.method, **kwargs)
                 else:
-                    rc = client.call(test_context, self.method, **self.kwargs)
-                    if not conf.quiet: print("RPC return value=%s" % str(rc))
+                    rc = client.call(test_context, conf.method, **kwargs)
+                    logging.debug("RPC return value=%s", str(rc))
             except Exception as e:
                 LOG.error("Unexpected exception occured: %s" % str(e))
                 break
             repeat += 1
-
-
-def main(argv=None):
-
-    logging.register_options(cfg.CONF)
-    cfg.CONF.register_cli_opts(_options)
-    cfg.CONF(sys.argv[1:])
-    if cfg.CONF.log_levels:
-        logging.set_defaults(
-            default_log_levels=cfg.CONF.log_levels.split(',')
-        )
-    logging.setup(cfg.CONF, "rpc-client")
-
-    quiet = cfg.CONF.quiet
-    server = cfg.CONF.server
-    exchange = cfg.CONF.exchange
-    topic = cfg.CONF.topic
-    namespace = cfg.CONF.namespace
-    url = cfg.CONF.url
-    target_version = cfg.CONF.target_version
-    fanout = cfg.CONF.fanout
-    cast = cfg.CONF.cast
-    payload = cfg.CONF.payload
-
-    method = cfg.CONF.method or "echo"
-    args = cfg.CONF.kwargs.split() if cfg.CONF.kwargs else []
-    kwargs = dict([(x.split('=')[0], x.split('=')[1] if len(x) > 1 else None)
-                   for x in args])
-    if not quiet:
-        print("Calling %s (%s) on server=%s exchange=%s topic=%s namespace=%s"
-              " fanout=%s cast=%s"
-              % (method, kwargs, server, exchange, topic,
-                 namespace, str(fanout), str(cast)))
-
-    if payload:
-        if not quiet:
-            print("Loading payload file %s" % payload)
-        with open(payload) as f:
-            kwargs["payload"] = f.read()
-
-    transport = messaging.get_rpc_transport(cfg.CONF, url=url)
-
-    target = messaging.Target(exchange=exchange,
-                              topic=topic,
-                              namespace=namespace,
-                              server=server,
-                              fanout=fanout,
-                              version=target_version)
-    threads = []
-    start_time = time.time()
-    for t in range(cfg.CONF.threads):
-        threads.append(ClientThread(cfg.CONF, transport, target,
-                                    method, kwargs))
-    try:
-        for t in threads:
-            t.join()
     except KeyboardInterrupt:
-        pass
+        logging.debug("Stopping...")
 
-    if cfg.CONF.stats:
+    print("%d RPC call(s) complete" % conf.repeat)
+
+    if conf.stats and repeat:
         delta = time.time() - start_time
-        msg_count = cfg.CONF.repeat * cfg.CONF.threads
-        stats = float(msg_count)/float(delta) if delta else 0
+        stats = (float(repeat)/float(delta)) if delta else 0
         print("Messages per second: %6.4f" % stats)
 
-    # @todo Need this until synchronous send available
-    if not quiet:
-        print("RPC complete!  Cleaning up transport...")
-    time.sleep(0)
+    logging.debug("RPC complete!  Cleaning up transport...")
+    # Hack: the client does not block when casting or fanout so delay the
+    # cleanup a bit in order for any buffered messages to be sent
+    if conf.cast or conf.fanout:
+        time.sleep(1.0)
     transport.cleanup()
     return 0
 

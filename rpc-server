@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #
-# Copyright 2016 Kenneth A. Giusti
+# Copyright 2018 Kenneth A. Giusti
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,21 +16,26 @@
 #
 
 
+import logging
 import sys
 import time
+import uuid
 
-from oslo_log import log as logging
 from oslo_config import cfg
+from oslo_messaging.opts import list_opts
 import oslo_messaging as messaging
 
-LOG = logging.getLogger(__name__)
+#
+# A simple RPC Server
+#
 
-quiet = False
+LOG = logging.getLogger()
 
 _options = [
     cfg.StrOpt('name',
-               help='Name of this server (used for direct addressing)',
-               required=True),
+               help='Name of this server (used for direct addressing)'),
+    cfg.StrOpt("url",
+               help="transport address, defaults to 'rabbit://localhost:5672'"),
     cfg.StrOpt('topic',
                default='my-topic',
                help="target topic, default 'my-topic'"),
@@ -39,95 +44,101 @@ _options = [
                help="target exchange, default 'my-exchange'"),
     cfg.StrOpt('namespace',
                help="target namespace, default None"),
-    cfg.StrOpt("url",
-               required=True,
-               default="rabbit://localhost:5672",
-               help="transport address, default 'rabbit://localhost:5672'"),
     cfg.StrOpt("target_version",
                help="Override the default version in the target address"),
-    cfg.BoolOpt("quiet",
+    cfg.BoolOpt("debug",
                 default=False,
-                help="Suppress all stdout output"),
-    cfg.StrOpt("log_levels",
-               help="Set module specific log levels, e.g."
-               " 'amqp=WARN,oslo.messaging=INFO,...'")
+                help="Enabled debug logging"),
+    cfg.StrOpt('executor',
+               default='threading',
+               help='threading model to use when dispatching calls')
 ]
 
 
 class TestEndpoint(object):
-    global quiet
+    """
+    A simple server endpoint
+    """
     def __init__(self, server, target=None):
         self.server = server
         self.target = target
+        self.calls = 0
 
     def sink(self, ctx, **args):
-        """Drop the message - no reply sent."""
-        if not quiet: print("%s::TestEndpoint:sink( ctxt=%s arg=%s ) called!!!"
-                            % (self.server, str(ctx),str(args)))
+        """
+        A cast (or fanout) call - no reply
+        """
+        logging.debug("%s::TestEndpoint:sink( ctxt=%s arg=%s ) called!!!",
+                      self.server, str(ctx), str(args))
+        self.calls += 1
 
     def echo(self, ctx, **args):
-        """Send the args back to the sender"""
-        if not quiet: print("%s::TestEndpoint::echo( ctxt=%s arg=%s ) called!!!"
-                        % (self.server, str(ctx),str(args)))
+        """
+        Send the args back to the sender
+        """
+        logging.debug("%s::TestEndpoint::echo( ctxt=%s arg=%s ) called!!!",
+                      self.server, str(ctx), str(args))
+        self.calls += 1
         return {"method":"echo", "context":ctx, "args":args}
 
     def sleep(self, ctx, **args):
-        if not quiet:
-            print("%s::TestEndpoint::sleeps( ctxt=%s arg=%s ) called!!!"
-                  % (self.server, str(ctx),str(args)))
+        """
+        For testing oslo.messaging:
+        sleep for 'timeout' value in args, or 10 seconds
+        """
+        logging.debug("%s::TestEndpoint::sleeps( ctxt=%s arg=%s ) called!!!",
+                      self.server, str(ctx), str(args))
         time.sleep(float(args.get("timeout", 10.0)))
+        self.calls += 1
         return args.get("reply")
 
     def fail(self, ctx, **args):
-        if not quiet:
-            print("%s::TestEndpoint::fail( ctxt=%s arg=%s ) called!!!"
+        """
+        For testing oslo.messaging:
+        Throw an exception during call processing
+        """
+        logging("%s::TestEndpoint::fail( ctxt=%s arg=%s ) called!!!"
                   % (self.server, str(ctx),str(args)))
+        self.calls += 1
         raise RuntimeError("fail method invoked!")
 
 
 def main(argv=None):
 
-    global quiet
+    conf = cfg.CONF
+    conf.register_cli_opts(_options)
+    for group, options in list_opts():
+        conf.register_opts(options, group=group)
 
-    logging.register_options(cfg.CONF)
-    cfg.CONF.register_cli_opts(_options)
-    cfg.CONF(sys.argv[1:])
-    if cfg.CONF.log_levels:
-        logging.set_defaults(
-            default_log_levels=cfg.CONF.log_levels.split(',')
-        )
-    logging.setup(cfg.CONF, "rpc-server")
+    conf(sys.argv[1:])
 
-    quiet = cfg.CONF.quiet
-    server_name = cfg.CONF.name
-    exchange = cfg.CONF.exchange
-    topic = cfg.CONF.topic
-    namespace = cfg.CONF.namespace
-    url = cfg.CONF.url
-    target_version = cfg.CONF.target_version
+    server_name = conf.name or uuid.uuid4().hex
+    url = conf.url or conf.transport_url
+    level = logging.DEBUG if conf.debug else logging.INFO
+    logging.basicConfig(level=level)
 
-    transport = messaging.get_rpc_transport(cfg.CONF, url=url)
+    transport = messaging.get_rpc_transport(conf, url=url)
 
-    target = messaging.Target(exchange=exchange,
-                              topic=topic,
-                              namespace=namespace,
+    target = messaging.Target(exchange=conf.exchange,
+                              topic=conf.topic,
+                              namespace=conf.namespace,
                               server=server_name,
-                              version=target_version)
+                              version=conf.target_version)
+    endpoint = TestEndpoint(server_name, target)
     server = messaging.get_rpc_server(transport, target,
-                                      [TestEndpoint(server_name, target)],
-                                      executor='threading')
+                                      [endpoint],
+                                      executor=conf.executor)
 
     server.start()
-    if not quiet:
-        print("Running server, name=%s exchange=%s topic=%s namespace=%s"
-              % (server_name, exchange, topic, namespace))
+    print("Server %s running" % server_name)
     try:
         while True:
-            time.sleep(1)
+            time.sleep(10)
     except KeyboardInterrupt:
-        if not quiet: print("Stopping..")
+        print("Stopping...")
         server.stop()
         server.wait()
+    print("%d calls processed" % endpoint.calls)
     return 0
 
 if __name__ == "__main__":
