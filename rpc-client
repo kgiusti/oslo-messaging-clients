@@ -15,6 +15,9 @@
 # limitations under the License.
 #
 
+import eventlet
+eventlet.monkey_patch()
+
 import logging
 import sys
 import threading
@@ -135,7 +138,7 @@ def main(argv=None):
                     rc = client.call(test_context, conf.method, **kwargs)
                     logging.debug("RPC return value=%s", str(rc))
             except Exception as e:
-                LOG.error("Unexpected exception occured: %s" % str(e))
+                logging.error("Unexpected exception occured: %s" % str(e))
                 break
             repeat += 1
     except KeyboardInterrupt:

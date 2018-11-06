@@ -1,4 +1,3 @@
 oslo.messaging
 oslo.config
-oslo.log
-pyngus
+eventlet

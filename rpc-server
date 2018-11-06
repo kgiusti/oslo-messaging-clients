@@ -15,6 +15,8 @@
 # limitations under the License.
 #
 
+import eventlet
+eventlet.monkey_patch()
 
 import logging
 import sys
@@ -28,8 +30,6 @@ import oslo_messaging as messaging
 #
 # A simple RPC Server
 #
-
-LOG = logging.getLogger()
 
 _options = [
     cfg.StrOpt('name',
@@ -50,7 +50,7 @@ _options = [
                 default=False,
                 help="Enabled debug logging"),
     cfg.StrOpt('executor',
-               default='threading',
+               default='eventlet',
                help='threading model to use when dispatching calls')
 ]
 

@@ -6,8 +6,6 @@ Clients:
 
 rpc-server - Listens for RPC requests and sends replies.
 rpc-client - Sends RPC requests to an RPC server.
-listener - Listens for notification messages.
-notifier - Sends notification messages.
 
 Use the --help option for more detail.
 
@@ -18,102 +16,19 @@ For more info on Openstack and oslo.messaging, see:
 Not officially part of the olso.messaging project, just my own sandbox
 to play in.
 
-RUNNING
--------
 
-1) run a local instance of qpidd:
-$ qpidd --load-module=./src/amqp.so --auth no --queue-patterns exclusive --queue-patterns unicast --topic-patterns broadcast
+Example:
 
-2) make sure your python environment has oslo.messaging available.  If
-it does not, you can use the config.sh script to set up a virtual
-environment:
+1) update the ssl-ocata.conf to use your certificates
+2) spawn an rpc-server in the background:
 
-$ source config.sh
+$ ./rpc-server --config-file ssl-ocata.conf --name S1 &
 
-You can then run the clients from within this environment.  Remember
-to use the 'deactivate' command to exit the environment when done!
+3) run the rpc-client to do rpc calls
 
-3) run a server (best to do this in its own dedicated terminal as it blocks):
+$ ./rpc-client --config-file ssl-ocata.conf --repeat 10
 
-$ ./rpc-server Server01
-Running server, name=Server01 exchange=my-exchange topic=my-topic namespace=my-namespace
 
-4) run the client, invoking "methodA" on topic "my-topic" with
-arguments "arg1" and "arg2":
-
-$ ./rpc-client methodA arg1 arg2
-Calling server on topic my-topic, server=None exchange=my-exchange namespace=my-namespace fanout=None
-
-See the source for the server (rpc-server) for the RPC methods it supports.
-
-You can set the oslo.messaging configuration values by passing the
-clients a configuration file.  Use the --oslo-config <file> parameter.
-
-Example: to configure the rpc-server with values from ./configs/rpc-server.conf:
-
-./rpc-server.py --oslo-config ./configs/rpc-server.conf MyServer
-
-Using AMQP 1.0 and the Dispatch Router
---------------------------------------
-
-These clients can be run using the proposed AMQP 1.0 driver
-for olso.messaging.  See: https://review.openstack.org/#/c/75815
-
-This driver will work with the latest Qpid broker (qpidd), as well as
-the Qpid Dispatch Router.  See:
-http://qpid.apache.org/components/dispatch-router/index.html for more
-details regarding the Dispatch Router.
-
-More detail TBD, but in summary you'll need to:
-
-0) Build and install the Proton/C libraries, See:
-http://qpid.apache.org/proton/index.html.  I've used the 0.7 release.
-
-If you've installed the Proton stuff in a non-standard path, you
-must set your python path so the clients can find the Proton Messenger
-python modules and C library wrapper.  For example:
-
-$ export PYTHONPATH="$PYTHONPATH:/home/kgiusti/proton/0.7/INSTALL/usr/lib64/python2.7/site-packages"
-
-1) Pull a copy of the AMQP 1.0 driver for oslo.messenger (see link
-above).  Use tox as above to set up your python environment.
-
-If using Qpid:
-
-2) Start the Qpid broker with the addition of the following queue and
-topic pattern specifiers:
-
- qpidd --queue-patterns exclusive --queue-patterns unicast --topic-patterns broadcast
-
-Note that Qpidd must be built with AMQP 1.0 support enabled!  For
-example, if building against a non-standard install of Proton:
-
-  cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo \
-        -DCMAKE_INSTALL_PREFIX=/home/kgiusti/work/proton/0.7/INSTALL \
-        -DSYSINSTALL_BINDINGS=OFF ..
-
-else if using Dispatch Router:
-
-2a) Build Dispatch Router, linking it against the Proton libraries you
-installed in 0).  For example, if building against a non-standard
-install of Proton:
-
-  cmake -DCMAKE_INCLUDE_PATH=/home/kgiusti/work/proton/0.7/INSTALL/include \
-        -DCMAKE_LIBRARY_PATH=/home/kgiusti/work/proton/0.7/INSTALL/lib64 ..
-  export PYTHONPATH="$PYTHONPATH:$(pwd)/python"
-
-2b) Start the Dispatch Router, using the configuration provided in the
-oslo.messaging.dispatch.conf file.
-
-  qdrouterd -c ./oslo.messaging.dispatch.conf
-
-3) Start a server, using the 'amqp:' protocol URL:
-
- rpc-server --url amqp://<address of Dispatch/Qpidd> Server01
-
-4) Run a client:
-
- rpc-client --url amqp://<address of Dispatch/Qpidd> echo key value
 
 
 
