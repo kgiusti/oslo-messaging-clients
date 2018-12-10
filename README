@@ -21,37 +21,42 @@ to play in.
 RUNNING
 -------
 
-1) run a local instance of qpidd:
-$ qpidd --load-module=./src/amqp.so --auth no --queue-patterns exclusive --queue-patterns unicast --topic-patterns broadcast
+These examples assume your are running the RabbitMQ broker on
+localhost port 5672.  You can use the --url parameter to specify a
+different address if necessary (e.g. --url rabbit://some.host.com:9999
 
-2) make sure your python environment has oslo.messaging available.  If
-it does not, you can use the config.sh script to set up a virtual
-environment:
+To run an RPC server (best to do this in its own dedicated terminal as
+it blocks):
 
-$ source config.sh
-
-You can then run the clients from within this environment.  Remember
-to use the 'deactivate' command to exit the environment when done!
-
-3) run a server (best to do this in its own dedicated terminal as it blocks):
-
-$ ./rpc-server Server01
+$ ./rpc-server --name Server01
 Running server, name=Server01 exchange=my-exchange topic=my-topic namespace=my-namespace
 
-4) run the client, invoking "methodA" on topic "my-topic" with
-arguments "arg1" and "arg2":
+Then use rpc-client to make an RPC call to the server:
 
-$ ./rpc-client methodA arg1 arg2
+$ ./rpc-client --method echo --kwargs "arg1=value1 arg2=value2"
 Calling server on topic my-topic, server=None exchange=my-exchange namespace=my-namespace fanout=None
 
 See the source for the server (rpc-server) for the RPC methods it supports.
+
+A similar example, but for notifications:
+
+First run a notification listener, for example assuming RabbitMQ on localhost:
+
+$ ./listener --url rabbit://localhost:5672 &
+
+Now you can issue notifications using the notifier command:
+
+$ ./notifier
+
+By default notifier issues a Debug level notification. You can change
+this using the --severity parameter:
 
 You can set the oslo.messaging configuration values by passing the
 clients a configuration file.  Use the --oslo-config <file> parameter.
 
 Example: to configure the rpc-server with values from ./configs/rpc-server.conf:
 
-./rpc-server.py --oslo-config ./configs/rpc-server.conf MyServer
+./rpc-server.py --oslo-config ./configs/rpc-server.conf --name MyServer
 
 Using AMQP 1.0 and the Dispatch Router
 --------------------------------------
