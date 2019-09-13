@@ -24,6 +24,7 @@ else
     source .ENV/bin/activate
     pip install -r ./requirements.txt
 fi
+source ./env.sh
 echo ""
 echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
 echo "REMEMBER: type 'deactivate' to exit this test environment!"

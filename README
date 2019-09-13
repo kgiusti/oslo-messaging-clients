@@ -120,6 +120,18 @@ oslo.messaging.dispatch.conf file.
 
  rpc-client --url amqp://<address of Dispatch/Qpidd> echo key value
 
+Features
+--------
 
+You can source the `env.sh` file to obtain some shortcuts.
 
+Examples:
+- drop all the rabbitmq trafic to simulate a network issue
+- start a rabbitmq cluster
+- etc...
 
+```shell
+$ source env.sh
+$ oslo_start_cluster # start a rabbitmq cluster
+$ oslo_blackout_start # simulate a network issue
+```
